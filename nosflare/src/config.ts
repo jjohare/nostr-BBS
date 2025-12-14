@@ -10,13 +10,13 @@
 
 // Pay to relay
 export const relayNpub = "npub16jdfqgazrkapk0yrqm9rdxlnys7ck39c7zmdzxtxqlmmpxg04r0sd733sv"; // Use your own npub
-export const PAY_TO_RELAY_ENABLED = true; // Set to false to disable pay to relay
+export const PAY_TO_RELAY_ENABLED = false; // Set to false to disable pay to relay (DISABLED for private community relay)
 export const RELAY_ACCESS_PRICE_SATS = 212121; // Price in SATS for relay access
 
 // Relay info
 export const relayInfo: RelayInfo = {
-  name: "Nosflare",
-  description: "A serverless Nostr relay using Cloudflare Workers and Durable Objects",
+  name: "Minimoonoir Private Relay",
+  description: "Private community relay for Minimoonoir users - D1 whitelist required for writes",
   pubkey: "d49a9023a21dba1b3c8306ca369bf3243d8b44b8f0b6d1196607f7b0990fa8df",
   contact: "lux@fed.wtf",
   supported_nips: [1, 2, 4, 5, 9, 11, 12, 15, 16, 17, 20, 22, 23, 33, 40, 42, 50, 51, 58, 65, 71, 78, 89, 94],
