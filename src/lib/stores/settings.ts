@@ -10,14 +10,15 @@ export interface AppSettings {
 const STORAGE_KEY = 'minimoonoir-settings';
 
 /**
- * Get the private relay URL based on current browser location
+ * Private relay URL - Cloudflare Workers deployment
+ */
+const PRIVATE_RELAY_URL = 'wss://nosflare.solitary-paper-764d.workers.dev';
+
+/**
+ * Get the private relay URL
  */
 function getPrivateRelayUrl(): string {
-  // SSR fallback only - browser environments use dynamic host detection
-  if (!browser) return 'ws://localhost:3000/relay';
-
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${window.location.host}/relay`;
+  return PRIVATE_RELAY_URL;
 }
 
 function getDefaultSettings(): AppSettings {
