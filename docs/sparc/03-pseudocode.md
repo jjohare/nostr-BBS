@@ -347,7 +347,7 @@ async function rejectJoin(
 sequenceDiagram
     participant S as Sender
     participant PWA as PWA Client
-    participant R as Relay
+    participant R as Relay (Cloudflare Workers)
     participant M as Members
 
     S->>PWA: Type message + send
@@ -355,7 +355,7 @@ sequenceDiagram
     alt Non-encrypted channel
         PWA->>PWA: Create kind 9 event
         Note over PWA: kind: 9<br/>tags: [["h", channelId]]<br/>content: plaintext
-        PWA->>R: Publish event
+        PWA->>R: Publish event (WebSocket)
         R->>R: Verify sender is member
         R->>M: Broadcast to subscribers
     else E2E encrypted channel
@@ -731,8 +731,8 @@ const adminActions: AdminActions = {
 sequenceDiagram
     participant U as User/Admin
     participant PWA as PWA Client
-    participant R as Relay (strfry)
-    participant DB as LMDB Storage
+    participant R as Relay (Cloudflare Workers)
+    participant DB as D1 / Durable Objects
 
     U->>PWA: Delete message
 
@@ -754,7 +754,7 @@ sequenceDiagram
         R->>PWA: Confirm deletion
     end
 
-    Note over DB: Local relay = true deletion<br/>No federation = no copies elsewhere
+    Note over DB: Serverless relay = true deletion<br/>No federation = no copies elsewhere
 ```
 
 ---

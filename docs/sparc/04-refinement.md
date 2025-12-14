@@ -137,15 +137,15 @@ graph TB
     end
 
     subgraph "Relay Layer"
-        SF[strfry]
-        R29[relay29]
-        LM[LMDB]
+        CW[Cloudflare Workers]
+        DO[Durable Objects]
+        D1[D1 Database]
+        R2[R2 Storage]
     end
 
     subgraph "Infrastructure"
-        CD[Caddy]
-        DK[Docker]
-        RS[Restic Backup]
+        CF[Cloudflare Pages]
+        CDN[Cloudflare CDN]
     end
 
     SK --> NDK
@@ -157,15 +157,13 @@ graph TB
     VT5 --> SK
     PW --> SK
 
-    NDK -->|WSS| SF
-    SF --> R29
-    SF --> LM
+    NDK -->|WSS| CW
+    CW --> DO
+    CW --> D1
+    CW --> R2
 
-    CD -->|Reverse Proxy| SF
-    CD -->|Static Files| SK
-    DK --> SF
-    DK --> CD
-    RS --> LM
+    CF -->|Static Files| SK
+    CDN -->|Global Edge| CF
 ```
 
 ### 2.2 Package Manifest
@@ -306,8 +304,10 @@ minimoonoir-nostr/
 │       └── messaging.spec.ts
 │
 ├── relay/
-│   ├── docker-compose.yml        # Relay deployment
-│   ├── strfry.conf               # Relay config
+│   ├── workers/
+│   │   ├── handler.ts            # Cloudflare Workers relay
+│   │   ├── durable-objects.ts    # Event storage
+│   │   └── config.ts             # Relay configuration
 │   └── whitelist.json            # Pubkey whitelist
 │
 ├── svelte.config.js
@@ -587,64 +587,102 @@ gantt
 
 ## 8. Relay Deployment
 
-### 8.1 Docker Compose
+### 8.1 Cloudflare Workers Configuration
 
-```yaml
-# relay/docker-compose.yml
-version: '3.8'
+```typescript
+// relay/workers/handler.ts
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const upgradeHeader = request.headers.get('Upgrade');
+    if (upgradeHeader === 'websocket') {
+      return handleWebSocket(request, env);
+    }
+    return new Response('Relay endpoint requires WebSocket', { status: 400 });
+  }
+};
 
-services:
-  strfry:
-    image: dockurr/strfry:latest
-    container_name: minimoonoir-relay
-    ports:
-      - "7777:7777"
-    volumes:
-      - ./strfry.conf:/etc/strfry.conf:ro
-      - ./whitelist.json:/etc/strfry/whitelist.json:ro
-      - strfry-data:/app/strfry-db
-    restart: unless-stopped
+async function handleWebSocket(request: Request, env: Env): Promise<Response> {
+  const pair = new WebSocketPair();
+  const [client, server] = Object.values(pair);
 
-  caddy:
-    image: caddy:2-alpine
-    container_name: minimoonoir-proxy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    depends_on:
-      - strfry
-    restart: unless-stopped
+  // Get Durable Object instance
+  const id = env.RELAY_STATE.idFromName('relay');
+  const stub = env.RELAY_STATE.get(id);
 
-volumes:
-  strfry-data:
-  caddy-data:
-  caddy-config:
+  // Pass WebSocket to Durable Object
+  await stub.fetch(request, {
+    headers: { Upgrade: 'websocket' },
+  });
+
+  return new Response(null, {
+    status: 101,
+    webSocket: client,
+  });
+}
 ```
 
-### 8.2 Caddyfile
+### 8.2 Durable Objects Setup
 
-```caddyfile
-# relay/Caddyfile
+```typescript
+// relay/workers/durable-objects.ts
+export class RelayState {
+  private storage: DurableObjectStorage;
+  private sessions: Set<WebSocket>;
 
-chat.minimoonoir.example {
-    # Serve PWA static files
-    root * /srv/www
-    file_server
+  constructor(state: DurableObjectState) {
+    this.storage = state.storage;
+    this.sessions = new Set();
+  }
 
-    # WebSocket proxy to strfry
-    @websocket {
-        header Connection *Upgrade*
-        header Upgrade websocket
+  async fetch(request: Request): Promise<Response> {
+    const upgradeHeader = request.headers.get('Upgrade');
+    if (upgradeHeader !== 'websocket') {
+      return new Response('Expected WebSocket', { status: 400 });
     }
-    reverse_proxy @websocket strfry:7777
 
-    # API proxy (if needed)
-    reverse_proxy /api/* strfry:7777
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+
+    server.accept();
+    this.sessions.add(server);
+
+    server.addEventListener('message', async (msg) => {
+      await this.handleNostrMessage(JSON.parse(msg.data), server);
+    });
+
+    return new Response(null, {
+      status: 101,
+      webSocket: client,
+    });
+  }
+
+  async handleNostrMessage(msg: any, socket: WebSocket) {
+    // Handle Nostr protocol messages
+    // Store events, handle subscriptions, etc.
+  }
 }
+```
+
+### 8.3 Wrangler Configuration
+
+```toml
+# wrangler.toml
+name = "minimoonoir-relay"
+main = "relay/workers/handler.ts"
+compatibility_date = "2024-12-13"
+
+[durable_objects]
+bindings = [
+  { name = "RELAY_STATE", class_name = "RelayState" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["RelayState"]
+
+[[r2_buckets]]
+binding = "RELAY_BACKUP"
+bucket_name = "minimoonoir-backups"
 ```
 
 ---

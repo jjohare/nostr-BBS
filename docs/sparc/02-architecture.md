@@ -26,20 +26,20 @@ graph TB
         end
     end
 
-    subgraph RelayLayer["RELAY LAYER"]
-        subgraph Strfry["strfry + relay29 (NIP-29 Groups)"]
+    subgraph RelayLayer["RELAY LAYER (Cloudflare Workers)"]
+        subgraph Relay["Cloudflare Workers Relay"]
             NIP42["NIP-42 AUTH<br/>- Pubkey whitelist<br/>- Challenge"]
             Groups["Group Logic<br/>- Membership<br/>- Roles<br/>- Moderation"]
-            Store["Event Store (LMDB)<br/>- Messages<br/>- Metadata<br/>- Deletion support"]
+            Store["Event Store (Durable Objects)<br/>- Messages<br/>- Metadata<br/>- Deletion support"]
         end
-        Backup["Backup Service<br/>- Incremental LMDB snapshots<br/>- Cloud storage sync"]
+        Backup["Backup Service<br/>- Durable Objects snapshots<br/>- R2 storage sync"]
     end
 
     Auth --> NDK
     Chat --> NDK
     Admin --> NDK
-    NDK -->|"WSS (WebSocket Secure)"| Strfry
-    Strfry --> Backup
+    NDK -->|"WSS (WebSocket Secure)"| Relay
+    Relay --> Backup
 ```
 
 ---
@@ -169,35 +169,40 @@ graph TB
 | `src/routes/` | SvelteKit file-based routing |
 | `static/` | PWA assets (manifest, icons, service worker) |
 
-### 2.2 Relay Configuration
+### 2.2 Relay Configuration (Cloudflare Workers)
 
-```yaml
-# strfry.conf
-relay:
-  info:
-    name: "Minimoonoir Private Relay"
-    description: "Private relay for Minimoonoir community"
-    supported_nips: [1, 2, 9, 11, 29, 42, 44, 59]
+```typescript
+// relay/workers/config.ts
+export const relayConfig = {
+  info: {
+    name: "Minimoonoir Private Relay",
+    description: "Private relay for Minimoonoir community",
+    supported_nips: [1, 2, 9, 11, 29, 42, 44, 59],
+  },
 
-  # NIP-42 Authentication Required
-  auth:
-    enabled: true
-    challenge_timeout: 60
+  // NIP-42 Authentication Required
+  auth: {
+    enabled: true,
+    challenge_timeout: 60,
+  },
 
-  # Write Policy
-  writePolicy:
-    # Only authenticated users can write
-    require_auth: true
-    # Whitelist managed by admin
-    pubkey_whitelist: "/etc/strfry/whitelist.json"
+  // Write Policy
+  writePolicy: {
+    // Only authenticated users can write
+    require_auth: true,
+    // Whitelist managed by admin
+    use_pubkey_whitelist: true,
+  },
 
-  # No federation
-  upstream: []
+  // No federation
+  upstream: [],
 
-  # Local storage
-  storage:
-    path: "/var/lib/strfry/data"
-    max_size: 1073741824  # 1GB
+  // Storage via Durable Objects
+  storage: {
+    use_durable_objects: true,
+    max_size: 1073741824,  // 1GB
+  },
+};
 ```
 
 ---
@@ -479,18 +484,18 @@ flowchart TB
 
 | Component | Technology | Rationale |
 |-----------|------------|-----------|
-| Core Relay | strfry | High-performance, LMDB storage |
-| Group Logic | relay29 | NIP-29 implementation |
-| Container | Docker | Easy deployment, backup |
-| Reverse Proxy | Caddy | Auto-HTTPS, WebSocket |
+| Core Relay | Cloudflare Workers | Edge deployment, global distribution |
+| Storage | Durable Objects | Consistent state, WebSocket support |
+| Group Logic | Custom NIP-29 impl | Full control over group features |
+| CDN/Proxy | Cloudflare | Auto-HTTPS, WebSocket, DDoS protection |
 
 ### 8.3 Infrastructure
 
 | Component | Technology | Rationale |
 |-----------|------------|-----------|
-| Hosting | Self-hosted (VPS/local) | Data sovereignty |
-| Backup | Restic + B2/S3 | Incremental, encrypted |
-| Monitoring | Prometheus + Grafana | Relay metrics |
+| Hosting | Cloudflare Workers + Pages | Serverless, global edge |
+| Storage | Durable Objects + R2 | Persistent state, backup storage |
+| Monitoring | Cloudflare Analytics | Built-in metrics and logging |
 
 ---
 
@@ -498,29 +503,26 @@ flowchart TB
 
 ```mermaid
 graph TB
-    subgraph Host["Host Machine / VPS"]
-        subgraph Docker["Docker Compose"]
-            Caddy["Caddy :443<br/>HTTPS + reverse proxy"]
-            Strfry["strfry :7777<br/>WebSocket relay"]
-            PWA["PWA (static) :3000"]
-
-            Caddy --- Strfry
+    subgraph Cloudflare["Cloudflare Edge"]
+        subgraph Pages["Cloudflare Pages"]
+            PWA["PWA (static SPA)<br/>Global CDN"]
         end
 
-        subgraph Volumes["Persistent Volumes"]
-            LMDB["/data/strfry (LMDB)"]
-            BackupDir["/data/backup"]
+        subgraph Workers["Cloudflare Workers"]
+            Relay["Relay Worker<br/>WebSocket endpoint"]
         end
 
-        subgraph BackupService["Backup Service (cron)"]
-            Daily["Daily: LMDB snapshot"]
-            Cloud["Sync to cloud (B2/S3)"]
-            Retention["30-day retention"]
+        subgraph DO["Durable Objects"]
+            State["Relay State<br/>Event storage"]
         end
 
-        Strfry --> LMDB
-        LMDB --> Daily
-        Daily --> Cloud
+        subgraph Storage["R2 Storage"]
+            Backup["Event Backups<br/>Snapshots"]
+        end
+
+        PWA -->|"WSS"| Relay
+        Relay --> State
+        State -->|"periodic"| Backup
     end
 ```
 

@@ -1,22 +1,11 @@
 # Minimoonoir
 
-A privacy-first community messaging platform built on the Nostr protocol. Features NIP-52 calendar events, NIP-28 public chat channels, NIP-17/59 encrypted direct messages, and cohort-based access control.
+A privacy-first community messaging platform built on the Nostr protocol. Features NIP-52 calendar events, NIP-28 public chat channels, NIP-17/59 encrypted direct messages, and cohort-based access control. Fully serverless architecture with SvelteKit PWA on GitHub Pages and Cloudflare Workers relay.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Nostr](https://img.shields.io/badge/Nostr-Protocol-purple.svg)](https://nostr.com)
 [![SvelteKit](https://img.shields.io/badge/SvelteKit-5.x-orange.svg)](https://kit.svelte.dev)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange.svg)](https://workers.cloudflare.com)
-
-> **Note:** This branch contains the legacy Docker-based architecture.
->
-> **For the current serverless implementation, see the [`cloudflare-serverless`](https://github.com/jjohare/minimoonoir/tree/cloudflare-serverless) branch.**
->
-> The serverless architecture uses:
-> - **GitHub Pages** for PWA hosting (free)
-> - **Cloudflare Workers** with nosflare relay
-> - **D1 Database** for whitelist/cohort access control
-> - **Durable Objects** for event storage
-> - **Zero infrastructure costs** on free tier
 
 ## Features
 
@@ -29,13 +18,18 @@ A privacy-first community messaging platform built on the Nostr protocol. Featur
 
 ## Quick Start
 
-**Recommended: Use the [`cloudflare-serverless`](https://github.com/jjohare/minimoonoir/tree/cloudflare-serverless) branch for the latest implementation.**
+### Prerequisites
+
+- Node.js 18+ and npm
+- Cloudflare account (free tier)
+- GitHub account (for deployment)
+
+### Local Development
 
 ```bash
-# Clone and switch to serverless branch
+# Clone the repository
 git clone https://github.com/jjohare/minimoonoir.git
 cd minimoonoir
-git checkout cloudflare-serverless
 
 # Install dependencies
 npm install
@@ -50,20 +44,24 @@ npm run dev
 # Access: http://localhost:5173
 ```
 
-### Legacy Docker Deployment (This Branch)
+### Deploy to Production
+
+**Frontend (GitHub Pages):**
 
 ```bash
-# Build the PWA
-npm install
+# Build PWA for production
 npm run build
 
-# Start services with Docker Compose
-docker-compose up -d
-
-# Access the application
-# Website: http://localhost:8080
-# Relay:   ws://localhost:8080/relay
+# Deployment happens automatically via GitHub Actions on push to main
+# Or deploy manually:
+npm run deploy
 ```
+
+**Backend (Cloudflare Workers):**
+
+The relay is already deployed at `wss://nosflare.solitary-paper-764d.workers.dev`
+
+To deploy your own relay, see the [nosflare repository](https://github.com/Spl0itable/nosflare) and follow the Cloudflare Workers deployment instructions.
 
 ## Architecture
 
@@ -73,62 +71,82 @@ docker-compose up -d
 graph TB
     subgraph Internet["Internet Access"]
         User["Web Browser"]
-        Tunnel["Cloudflare Tunnel<br/>(Optional HTTPS)"]
+        CDN["GitHub Pages<br/>(Static CDN)"]
     end
 
-    subgraph Docker["Docker Container :8080"]
-        subgraph Nginx["nginx :80"]
-            Static["Static Files<br/>/var/www/html"]
-            WSProxy["WebSocket Proxy<br/>/relay → :7777"]
-        end
-
-        subgraph Strfry["strfry :7777"]
-            LMDB[(LMDB Database)]
-            Auth["NIP-42 Auth Plugin"]
-            Groups["NIP-29 Groups"]
-        end
-
-        Supervisor["supervisord<br/>(Process Manager)"]
+    subgraph Cloudflare["Cloudflare Edge Network"]
+        Worker["Workers Relay<br/>(nosflare)"]
+        DO["Durable Objects<br/>(WebSocket Manager)"]
+        D1["D1 Database<br/>(SQLite)"]
+        KV["KV Storage<br/>(Optional Cache)"]
     end
 
-    User -->|HTTPS| Tunnel
-    Tunnel -->|HTTP :80| Nginx
-    User -.->|HTTP<br/>(local)| Nginx
+    subgraph Frontend["SvelteKit PWA"]
+        Static["Static Site<br/>(adapter-static)"]
+        SW["Service Worker<br/>(Offline Support)"]
+        IDB["IndexedDB<br/>(Local Cache)"]
+    end
 
-    Static -->|SvelteKit SPA| User
-    WSProxy <-->|WebSocket| Strfry
-    Strfry --> LMDB
-    Strfry --> Auth
-    Strfry --> Groups
+    User -->|HTTPS| CDN
+    CDN -->|Serves| Static
+    Static -->|Registers| SW
+    SW -->|Caches| IDB
 
-    Supervisor -->|manages| Nginx
-    Supervisor -->|manages| Strfry
+    User -.->|WSS| Worker
+    Worker <-->|Manages| DO
+    Worker <-->|Query| D1
+    Worker -.->|Cache| KV
+    DO <-->|Store State| DO
 
-    style Docker fill:#1e3a8a,color:#fff
     style Internet fill:#064e3b,color:#fff
+    style Cloudflare fill:#f97316,color:#fff
+    style Frontend fill:#1e3a8a,color:#fff
 ```
 
-### Deployment Options
+### Deployment Architecture
 
 ```mermaid
 graph LR
-    subgraph Option1["Option 1: Direct Access"]
-        Browser1["Browser"] -->|HTTP :8080| Docker1["Docker Container"]
+    subgraph Development["Development"]
+        Dev["Local Dev<br/>localhost:5173"] -->|npm run dev| DevRelay["Local Relay<br/>(Optional)"]
     end
 
-    subgraph Option2["Option 2: Cloudflare Tunnel"]
-        Browser2["Browser"] -->|HTTPS| CF["Cloudflare Edge"]
-        CF -->|Tunnel| Docker2["Docker Container :80"]
+    subgraph Production["Production"]
+        Browser["Browser"] -->|HTTPS| GHP["GitHub Pages<br/>your-username.github.io"]
+        GHP -->|Loads| PWA["SvelteKit PWA"]
+        PWA -.->|WSS| CFWorker["Cloudflare Workers<br/>wss://nosflare.*.workers.dev"]
     end
 
-    subgraph Option3["Option 3: Reverse Proxy"]
-        Browser3["Browser"] -->|HTTPS :443| Proxy["nginx/Caddy"]
-        Proxy -->|HTTP :8080| Docker3["Docker Container"]
+    subgraph CI/CD["GitHub Actions"]
+        Push["git push main"] -->|Trigger| Workflow["Build & Deploy"]
+        Workflow -->|Deploy| GHP
     end
 
-    style Option1 fill:#065f46,color:#fff
-    style Option2 fill:#1e40af,color:#fff
-    style Option3 fill:#6b21a8,color:#fff
+    style Development fill:#065f46,color:#fff
+    style Production fill:#1e40af,color:#fff
+    style CI/CD fill:#6b21a8,color:#fff
+```
+
+### Free Tier Compatibility
+
+```mermaid
+graph TB
+    subgraph Free["Free Tier Services"]
+        GH["GitHub Pages<br/>✅ Unlimited bandwidth"]
+        CF["Cloudflare Workers<br/>✅ 100k req/day"]
+        D1DB["D1 Database<br/>✅ 5GB storage"]
+        DO["Durable Objects<br/>✅ 1M req/month"]
+    end
+
+    subgraph Costs["Zero Cost Architecture"]
+        Storage["Event Storage"] -->|Free| D1DB
+        WS["WebSocket Connections"] -->|Free| DO
+        Static["Static Hosting"] -->|Free| GH
+        Edge["Edge Computing"] -->|Free| CF
+    end
+
+    style Free fill:#065f46,color:#fff
+    style Costs fill:#064e3b,color:#fff
 ```
 
 ## Nostr Implementation
@@ -155,7 +173,6 @@ graph TB
     subgraph Features["Advanced Features"]
         NIP52["NIP-52<br/>Calendar Events"]
         NIP09["NIP-09<br/>Deletion"]
-        NIP29["NIP-29<br/>Groups"]
     end
 
     NIP01 --> NIP28
@@ -165,7 +182,6 @@ graph TB
     NIP59 --> NIP17
     NIP01 --> NIP25
     NIP01 --> NIP09
-    NIP01 --> NIP29
 
     style Core fill:#1e40af,color:#fff
     style Messaging fill:#7c2d12,color:#fff
@@ -183,7 +199,6 @@ graph TB
 | [NIP-17](https://github.com/nostr-protocol/nips/blob/master/17.md) | Private DMs | ✅ Complete | Sealed rumors for private messaging |
 | [NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md) | Reactions | ✅ Complete | Message reactions (emoji) |
 | [NIP-28](https://github.com/nostr-protocol/nips/blob/master/28.md) | Public Chat | ✅ Complete | Group channels with moderation |
-| [NIP-29](https://github.com/nostr-protocol/nips/blob/master/29.md) | Groups | ✅ Complete | Relay-based groups with moderation |
 | [NIP-42](https://github.com/nostr-protocol/nips/blob/master/42.md) | Authentication | ✅ Complete | Relay authentication challenges |
 | [NIP-44](https://github.com/nostr-protocol/nips/blob/master/44.md) | Versioned Encryption | ✅ Complete | Modern encryption for DMs |
 | [NIP-52](https://github.com/nostr-protocol/nips/blob/master/52.md) | Calendar Events | ✅ Complete | Event scheduling with RSVP |
@@ -198,10 +213,6 @@ graph TB
 | 4 | 04 | Encrypted DM | Legacy DMs (read-only) |
 | 5 | 09 | Deletion | Delete own messages |
 | 7 | 25 | Reaction | Emoji reactions |
-| 9 | 29 | Group Chat | Group messages |
-| 10 | 29 | Group Metadata | Group info |
-| 11 | 29 | Group Admins | Admin list |
-| 12 | 29 | Group Members | Member list |
 | 40 | 28 | Channel Creation | Create channel |
 | 41 | 28 | Channel Metadata | Update channel |
 | 42 | 28 | Channel Message | Post to channel |
@@ -259,7 +270,7 @@ sequenceDiagram
     participant User
     participant App as PWA
     participant Store as Local Storage
-    participant Relay as Nostr Relay
+    participant Relay as Cloudflare Workers
 
     User->>App: 1. Click "Create Account"
     App->>App: 2. Generate BIP-39 Mnemonic
@@ -288,30 +299,32 @@ sequenceDiagram
     participant User
     participant App as PWA
     participant Cache as IndexedDB
-    participant Relay as Nostr Relay
+    participant Relay as Cloudflare Workers
+    participant DO as Durable Object
     participant Others as Other Users
 
     User->>App: 1. Join Channel
     App->>Relay: 2. Subscribe (Kind 40-42)
-    Relay->>App: 3. Stream Existing Messages
-    App->>Cache: 4. Cache Messages Locally
-    App->>User: 5. Display Channel
+    Relay->>DO: 3. Manage WebSocket Connection
+    DO->>App: 4. Stream Existing Messages
+    App->>Cache: 5. Cache Messages Locally
+    App->>User: 6. Display Channel
 
-    User->>App: 6. Type Message
-    App->>App: 7. Create Kind 42 Event
-    App->>App: 8. Sign with Private Key
-    App->>Relay: 9. Publish Event
+    User->>App: 7. Type Message
+    App->>App: 8. Create Kind 42 Event
+    App->>App: 9. Sign with Private Key
+    App->>Relay: 10. Publish Event
 
-    Relay->>Relay: 10. Validate Signature
-    Relay->>Relay: 11. Store in LMDB
-    Relay->>Others: 12. Broadcast to Subscribers
-    Relay->>App: 13. Confirm Receipt
+    Relay->>Relay: 11. Validate Signature
+    Relay->>DO: 12. Store in Durable Object
+    DO->>Others: 13. Broadcast to Subscribers
+    Relay->>App: 14. Confirm Receipt
 
-    App->>Cache: 14. Update Local Cache
-    Others->>Others: 15. Display Message
+    App->>Cache: 15. Update Local Cache
+    Others->>Others: 16. Display Message
 
     Note over Cache: Offline support via IndexedDB
-    Note over Relay: NIP-42 auth required for writes
+    Note over Relay: NIP-42 auth + cohort check
 ```
 
 ### Gift-Wrapped DM Flow (NIP-17/59)
@@ -320,7 +333,7 @@ sequenceDiagram
 sequenceDiagram
     participant Alice
     participant App as PWA
-    participant Relay as Nostr Relay
+    participant Relay as Cloudflare Workers
     participant Bob
 
     Alice->>App: 1. Compose Private Message
@@ -355,7 +368,7 @@ sequenceDiagram
     participant App as PWA
     participant SW as Service Worker
     participant Queue as IndexedDB Queue
-    participant Relay as Nostr Relay
+    participant Relay as Cloudflare Workers
 
     Note over App: User goes offline
 
@@ -401,7 +414,6 @@ minimoonoir/
 │   │   │   ├── encryption.ts # NIP-44 encryption
 │   │   │   ├── dm.ts        # NIP-17/59 DM functions
 │   │   │   ├── channels.ts  # NIP-28 channels
-│   │   │   ├── groups.ts    # NIP-29 groups
 │   │   │   ├── reactions.ts # NIP-25 reactions
 │   │   │   ├── calendar.ts  # NIP-52 events
 │   │   │   └── relay.ts     # NDK relay manager
@@ -427,10 +439,15 @@ minimoonoir/
 │   │   ├── admin/           # Admin dashboard
 │   │   └── settings/        # User settings
 │   └── service-worker.ts    # PWA service worker
-├── relay/
-│   ├── strfry.conf          # Relay configuration
-│   ├── strfry-dev.conf      # Development config
-│   └── whitelist.json       # Authorized pubkeys
+├── nosflare/                # Cloudflare Workers relay (customized)
+│   ├── worker.js            # Compiled relay worker
+│   ├── wrangler.toml        # Free tier configuration
+│   ├── schema.sql           # D1 database schema
+│   └── CUSTOMIZATION.md     # Our customizations documentation
+├── .github/
+│   └── workflows/
+│       ├── deploy-pages.yml  # Frontend deployment to GitHub Pages
+│       └── deploy-relay.yml  # Backend deployment to Cloudflare Workers
 ├── static/                  # Static assets
 │   ├── manifest.json        # PWA manifest
 │   └── icon-*.png           # PWA icons
@@ -438,14 +455,7 @@ minimoonoir/
 │   ├── unit/                # Unit tests
 │   └── e2e/                 # E2E tests
 ├── docs/                    # Documentation
-│   ├── DEPLOYMENT.md        # Deployment guide
-│   ├── SECURITY_AUDIT.md    # Security documentation
-│   ├── dm-implementation.md # DM implementation
-│   ├── pwa-implementation.md # PWA guide
-│   └── sparc/               # SPARC methodology docs
-├── Dockerfile               # Multi-stage Docker build
-├── docker-compose.yml       # Deployment config
-├── nginx.conf               # Web server config
+├── svelte.config.js         # SvelteKit config (adapter-static)
 └── package.json             # Node dependencies
 ```
 
@@ -454,119 +464,131 @@ minimoonoir/
 ### Environment Variables
 
 ```bash
-# .env
-VITE_RELAY_URL=ws://localhost:8080/relay    # Relay WebSocket URL
+# .env (local development)
+VITE_RELAY_URL=wss://nosflare.solitary-paper-764d.workers.dev
 VITE_ADMIN_PUBKEY=<hex-pubkey>              # Admin public key (hex)
 VITE_NDK_DEBUG=false                         # Enable NDK debug logging
+
+# GitHub Secrets (for CI/CD)
+# Add these in repository Settings > Secrets and variables > Actions
+CLOUDFLARE_API_TOKEN=<your-api-token>        # For relay deployment
+ADMIN_PUBKEY=<hex-pubkey>                    # Admin public key
 ```
 
 ### Relay Configuration
 
-The strfry relay is configured in `relay/strfry.conf`:
+The Cloudflare Workers relay is deployed separately. Key configuration:
 
-```conf
-relay {
-    name = "Minimoonoir Private Relay"
-    bind = "127.0.0.1"
-    port = 7777
-    noTLS = true
-}
+- **Relay URL:** `wss://nosflare.solitary-paper-764d.workers.dev`
+- **Admin Pubkey:** Set via `VITE_ADMIN_PUBKEY` environment variable
+- **Access Control:** D1 database whitelist with cohort support
+- **Storage:** Durable Objects (SQLite-backed) for event storage
 
-events {
-    maxEventSize = 65536
-    maxNumTags = 2000
-}
+### PWA Configuration
 
-negentropy {
-    enabled = true
-    maxSyncEvents = 1000000
-}
-```
+PWA settings in `static/manifest.json`:
 
-## Docker Deployment
-
-### Using Docker Compose
-
-```bash
-# Build and start
-docker-compose up -d --build
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-
-# Rebuild after code changes
-npm run build && docker-compose restart
-
-# Access
-# Website: http://localhost:8080
-# Relay:   ws://localhost:8080/relay
-```
-
-### Endpoints
-
-| Path | Service | Description |
-|------|---------|-------------|
-| `/` | nginx | PWA static files |
-| `/relay` | strfry | Nostr WebSocket |
-| `/relay/` | strfry | NIP-11 relay info (HTTP GET) |
-| `/health` | nginx | Health check endpoint |
-
-### With Cloudflare Tunnel
-
-```bash
-# Install cloudflared
-curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
-chmod +x cloudflared
-sudo mv cloudflared /usr/local/bin/
-
-# Create tunnel
-cloudflared tunnel login
-cloudflared tunnel create minimoonoir
-cloudflared tunnel route dns minimoonoir chat.yourdomain.com
-
-# Configure (~/.cloudflared/config.yml)
-tunnel: <TUNNEL_ID>
-credentials-file: /home/<user>/.cloudflared/<TUNNEL_ID>.json
-
-ingress:
-  - hostname: chat.yourdomain.com
-    service: http://localhost:8080
-  - service: http_status:404
-
-# Run tunnel
-cloudflared tunnel run minimoonoir
-```
-
-### With Reverse Proxy
-
-```bash
-# Caddy example
-chat.example.com {
-    reverse_proxy localhost:8080
-}
-
-# nginx example
-server {
-    listen 443 ssl http2;
-    server_name chat.example.com;
-
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
+```json
+{
+  "name": "Minimoonoir",
+  "short_name": "Minimoonoir",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
-
-    location /relay {
-        proxy_pass http://localhost:8080/relay;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
+  ]
 }
 ```
+
+## Deployment
+
+### GitHub Pages (Frontend)
+
+The frontend is automatically deployed via GitHub Actions on every push to `main`:
+
+1. **Setup GitHub Pages:**
+   - Go to repository Settings > Pages
+   - Source: GitHub Actions
+   - Branch: main
+
+2. **GitHub Actions workflow** (`.github/workflows/deploy.yml`):
+   ```yaml
+   name: Deploy to GitHub Pages
+   on:
+     push:
+       branches: [main]
+   jobs:
+     deploy:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v4
+         - uses: actions/setup-node@v4
+           with:
+             node-version: 18
+         - run: npm ci
+         - run: npm run build
+         - uses: actions/upload-pages-artifact@v2
+           with:
+             path: build
+         - uses: actions/deploy-pages@v2
+   ```
+
+3. **Manual deployment:**
+   ```bash
+   npm run build
+   npm run deploy
+   ```
+
+### Cloudflare Workers (Backend)
+
+The relay is pre-deployed at `wss://nosflare.solitary-paper-764d.workers.dev`.
+
+For custom deployments using our customized relay:
+
+```bash
+cd nosflare/
+
+# Create D1 database (first time only)
+wrangler d1 create minimoonoir
+# Update database_id in wrangler.toml with the returned ID
+
+# Apply schema
+wrangler d1 execute minimoonoir --file=schema.sql
+
+# Add admin to whitelist
+wrangler d1 execute minimoonoir --command="INSERT INTO whitelist (pubkey, cohorts, added_at, added_by) VALUES ('YOUR_HEX_PUBKEY', '[\"admin\"]', unixepoch(), 'system')"
+
+# Deploy
+wrangler deploy
+```
+
+See also:
+- [nosflare/CUSTOMIZATION.md](nosflare/CUSTOMIZATION.md) - Our free tier customizations
+- [nosflare](https://github.com/Spl0itable/nosflare) - Original Cloudflare Workers relay by @Spl0itable
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - Full deployment guide
+
+### Access Control
+
+Users are managed via D1 database whitelist with cohort-based access:
+
+| Cohort | Access Level |
+|--------|--------------|
+| `admin` | Full access, can manage users/channels |
+| `business` | Business community members |
+| `moomaa-tribe` | Community group members |
+
+Contact admin to be added to the whitelist.
 
 ## Testing
 
@@ -603,58 +625,66 @@ npm test -- --watch
 
 ### Relay Security
 - NIP-42 authentication required for writes
-- Optional whitelist for private communities
-- Rate limiting and event validation
+- Cohort-based whitelist (business, moomaa-tribe, admin)
+- Event validation and signature verification
 - NIP-09 deletion support
 
 ### Network Security
-- HTTPS required in production (via Cloudflare Tunnel or reverse proxy)
+- HTTPS for GitHub Pages (automatic)
 - WebSocket Secure (WSS) for relay connections
 - Content Security Policy headers
 - CORS configuration
+- Cloudflare edge protection
+
+### Serverless Security Benefits
+- No server to compromise
+- Durable Objects provide isolated execution
+- D1 database with prepared statements (SQL injection prevention)
+- Cloudflare DDoS protection
+- Zero-trust architecture
 
 ## GitHub Labels
 
 Our project uses a comprehensive labeling system for issue and PR management:
 
 ### Priority Labels
-- `priority: critical` 🔴 - Security issues, data loss bugs, service outages
-- `priority: high` 🟠 - Major features, significant bugs affecting many users
-- `priority: medium` 🟡 - Regular features, moderate bugs
-- `priority: low` 🟢 - Nice-to-have features, minor improvements
+- `priority: critical` - Security issues, data loss bugs, service outages
+- `priority: high` - Major features, significant bugs affecting many users
+- `priority: medium` - Regular features, moderate bugs
+- `priority: low` - Nice-to-have features, minor improvements
 
 ### Type Labels
-- `type: bug` 🐛 - Something isn't working
-- `type: feature` ✨ - New feature request
-- `type: enhancement` 🚀 - Improvement to existing feature
-- `type: documentation` 📚 - Documentation improvements
-- `type: refactor` 🔧 - Code refactoring
-- `type: test` 🧪 - Test-related changes
-- `type: security` 🔒 - Security-related issues
+- `type: bug` - Something isn't working
+- `type: feature` - New feature request
+- `type: enhancement` - Improvement to existing feature
+- `type: documentation` - Documentation improvements
+- `type: refactor` - Code refactoring
+- `type: test` - Test-related changes
+- `type: security` - Security-related issues
 
 ### Area Labels
-- `area: relay` 📡 - Strfry relay, NIP implementation
-- `area: pwa` 📱 - Progressive Web App, service worker
-- `area: ui/ux` 🎨 - User interface and experience
-- `area: encryption` 🔐 - NIP-44, NIP-17/59 encryption
-- `area: channels` 💬 - NIP-28 public channels
-- `area: dm` 📨 - Direct messaging (NIP-17/59)
-- `area: calendar` 📅 - NIP-52 calendar events
-- `area: admin` 👑 - Admin panel and moderation
-- `area: deployment` 🚢 - Docker, deployment, infrastructure
+- `area: relay` - Cloudflare Workers relay, NIP implementation
+- `area: pwa` - Progressive Web App, service worker
+- `area: ui/ux` - User interface and experience
+- `area: encryption` - NIP-44, NIP-17/59 encryption
+- `area: channels` - NIP-28 public channels
+- `area: dm` - Direct messaging (NIP-17/59)
+- `area: calendar` - NIP-52 calendar events
+- `area: admin` - Admin panel and moderation
+- `area: deployment` - GitHub Pages, Cloudflare Workers
 
 ### Status Labels
-- `status: needs triage` 🏷️ - Needs review and classification
-- `status: blocked` 🚫 - Blocked by dependencies
-- `status: in progress` 🔄 - Currently being worked on
-- `status: needs review` 👀 - Awaiting code review
-- `status: ready to merge` ✅ - Approved and ready
+- `status: needs triage` - Needs review and classification
+- `status: blocked` - Blocked by dependencies
+- `status: in progress` - Currently being worked on
+- `status: needs review` - Awaiting code review
+- `status: ready to merge` - Approved and ready
 
 ### Special Labels
-- `good first issue` 🌱 - Good for newcomers
-- `help wanted` 🆘 - Extra attention needed
-- `breaking change` ⚠️ - Breaking API changes
-- `dependencies` 📦 - Dependency updates
+- `good first issue` - Good for newcomers
+- `help wanted` - Extra attention needed
+- `breaking change` - Breaking API changes
+- `dependencies` - Dependency updates
 
 ## API Reference
 
@@ -664,7 +694,7 @@ Our project uses a comprehensive labeling system for issue and PR management:
 import { connectRelay, publishEvent, subscribe } from '$lib/nostr';
 
 // Connect to relay
-await connectRelay('ws://localhost:8080/relay', privateKey);
+await connectRelay('wss://nosflare.solitary-paper-764d.workers.dev', privateKey);
 
 // Publish event
 const event = new NDKEvent();
@@ -712,7 +742,7 @@ await sendChannelMessage(channelId, 'Hello channel!');
 ## Documentation
 
 ### User Guides
-- [Deployment Guide](docs/DEPLOYMENT.md) - Docker deployment and configuration
+- [Deployment Guide](docs/DEPLOYMENT.md) - Serverless deployment and configuration
 - [Security Audit](docs/SECURITY_AUDIT.md) - Security analysis and recommendations
 - [PWA Implementation](docs/pwa-implementation.md) - Offline support and installation
 - [DM Implementation](docs/dm-implementation.md) - NIP-17/59 encrypted messaging
@@ -757,14 +787,40 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-- [Nostr Protocol](https://nostr.com) - The protocol specification
-- [NDK](https://github.com/nostr-dev-kit/ndk) - Nostr Development Kit
-- [strfry](https://github.com/hoytech/strfry) - High-performance Nostr relay
+### Core Technologies
+
+- [Nostr Protocol](https://nostr.com) - Decentralized social protocol specification
+- [NDK](https://github.com/nostr-dev-kit/ndk) - Nostr Development Kit by @pablof7z
 - [SvelteKit](https://kit.svelte.dev) - Web application framework
 - [Tailwind CSS](https://tailwindcss.com) - Utility-first CSS framework
+
+### Infrastructure
+
+- [nosflare](https://github.com/Spl0itable/nosflare) - Cloudflare Workers relay by [@Spl0itable](https://github.com/Spl0itable)
+- [Cloudflare Workers](https://workers.cloudflare.com) - Edge computing platform
+- [Cloudflare D1](https://developers.cloudflare.com/d1) - Serverless SQLite database
+- [Cloudflare Durable Objects](https://developers.cloudflare.com/workers/runtime-apis/durable-objects) - Stateful serverless storage
+- [GitHub Pages](https://pages.github.com) - Static site hosting
+
+### Development Tools
+
+- [Agentic QE Fleet](https://github.com/proffesor-for-testing/agentic-qe) - AI-powered quality engineering agents (31 QE agents, 53 QE skills)
+- [Claude Code](https://claude.ai/claude-code) - AI-assisted development by Anthropic
+- [Claude Flow](https://github.com/ruvnet/claude-flow) - Swarm coordination for parallel development
+- [ruv-swarm](https://github.com/ruv/ruv-swarm) - Multi-agent orchestration
+
+### NIPs Implemented
+
+Special thanks to the Nostr community for the NIP specifications:
+- NIP-01, NIP-02, NIP-09, NIP-11, NIP-17, NIP-25, NIP-28, NIP-42, NIP-44, NIP-52, NIP-59
+
+### Contributors
+
+- John O'Hare ([@jjohare](https://github.com/jjohare)) - Project lead
+- Claude Opus 4.5 / Claude Sonnet 4.5 - AI development assistance
 
 ## Support
 
 - Documentation: See [docs/](docs/) directory
-- Issues: [GitHub Issues](https://github.com/your-username/minimoonoir/issues)
-- Discussions: [GitHub Discussions](https://github.com/your-username/minimoonoir/discussions)
+- Issues: [GitHub Issues](https://github.com/jjohare/minimoonoir/issues)
+- Discussions: [GitHub Discussions](https://github.com/jjohare/minimoonoir/discussions)

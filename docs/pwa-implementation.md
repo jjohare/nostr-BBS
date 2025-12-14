@@ -348,7 +348,7 @@ Consider implementing queue size limits:
 
 Service workers require HTTPS (except localhost):
 - Development: http://localhost (allowed)
-- Production: https://your-domain.com (required)
+- Production: https://your-domain.com via Cloudflare (required)
 
 ### Same-Origin Policy
 

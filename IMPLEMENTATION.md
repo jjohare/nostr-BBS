@@ -16,6 +16,39 @@
 - `.env.example` - Environment configuration template
 - `/src/env.d.ts` - TypeScript environment declarations
 
+## Architecture Overview
+
+### Serverless Relay Infrastructure
+The relay is built on **Cloudflare Workers** with a distributed architecture:
+
+#### Cloudflare Workers Components
+- **WebSocket Handler** - Main entry point for client connections
+- **ConnectionDO** - Durable Object for WebSocket connection management
+- **EventShardDO** - Durable Object for distributed event storage
+- **SessionManagerDO** - Durable Object for session state management
+
+#### Data Layer
+- **D1 Database** - SQLite-based database for:
+  - Whitelist management (pubkeys, cohorts)
+  - Cohort definitions and access control
+  - Persistent event storage
+  - User session tracking
+
+#### Connection Flow
+```
+Client (NDK) → Cloudflare Worker → ConnectionDO → EventShardDO
+                      ↓
+                  D1 Database
+                      ↓
+              SessionManagerDO
+```
+
+### Deployment Architecture
+- **Edge Network** - Global distribution via Cloudflare's edge network
+- **Auto-scaling** - Durable Objects scale automatically per connection
+- **WebSocket Support** - Native WebSocket handling in Workers
+- **Zero Configuration** - No server management required
+
 ## Implementation Details
 
 ### 1. NDK Instance (`src/lib/nostr/relay.ts`)
@@ -36,6 +69,7 @@ Features:
 - Automatic retry logic
 - State tracking via Svelte store
 - Error reporting
+- WebSocket upgrade handling
 
 ### 3. NIP-42 AUTH Support
 ```typescript
@@ -47,6 +81,7 @@ Features:
 - Challenge response handling
 - Timeout protection (5s)
 - State updates (auth-required → authenticating → authenticated)
+- Serverless AUTH verification via D1 whitelist
 
 ### 4. Event Publishing
 ```typescript
@@ -57,6 +92,7 @@ Features:
 - Timeout protection (5s)
 - Relay set return
 - Error handling
+- Event routing to EventShardDO
 
 ### 5. Event Subscriptions
 ```typescript
@@ -68,6 +104,7 @@ Features:
 - Auto-cleanup on close
 - Custom subscription IDs
 - EOSE handling
+- Real-time updates from Durable Objects
 
 ### 6. Connection States
 ```typescript
@@ -101,9 +138,9 @@ interface ConnectionStatus {
 
 ### Environment Variables
 ```bash
-VITE_RELAY_URL=ws://localhost:8080     # Required
-VITE_ADMIN_PUBKEY=<hex-pubkey>         # Optional
-VITE_NDK_DEBUG=false                   # Optional
+VITE_RELAY_URL=wss://your-worker.workers.dev     # Required - Cloudflare Worker URL
+VITE_ADMIN_PUBKEY=<hex-pubkey>                   # Optional
+VITE_NDK_DEBUG=false                             # Optional
 ```
 
 ### Constants
@@ -139,6 +176,57 @@ TIMEOUTS = {
 }
 ```
 
+## Nostr Protocol Implementation
+
+### Supported NIPs
+
+#### NIP-01: Basic Protocol
+- Event structure (kind, content, tags, pubkey, sig)
+- REQ/EVENT/CLOSE message handling
+- Event validation and signature verification
+
+#### NIP-42: Authentication
+- AUTH challenge/response flow
+- Kind 22242 authentication events
+- Challenge string validation
+- Signature-based authentication
+
+#### NIP-52: Calendar Events
+- Kind 31922 for time-based events
+- Kind 31923 for calendar time events
+- d-tag based event identification
+- Cohort-based access control via tags
+
+#### Additional Protocol Support
+- NIP-19: bech32 encoding (npub, nsec, note)
+- NIP-28: Public chat (kind 42 events)
+- NIP-40: Expiration timestamps
+- NIP-65: Relay list metadata
+
+### Event Flow
+
+#### Publishing Flow
+```
+1. Client creates NDKEvent
+2. Event signed with private key
+3. EVENT message sent to relay
+4. Worker validates signature
+5. ConnectionDO checks whitelist via D1
+6. EventShardDO stores event
+7. OK response sent to client
+8. Event broadcast to subscribers
+```
+
+#### Subscription Flow
+```
+1. Client sends REQ with filters
+2. Worker validates filters
+3. ConnectionDO creates subscription
+4. EventShardDO queries matching events
+5. Events sent via EOSE
+6. Real-time updates pushed to subscribers
+```
+
 ## Usage Examples
 
 ### Basic Connection
@@ -148,10 +236,11 @@ import { connectRelay, connectionState } from '$lib/nostr';
 // Monitor connection
 connectionState.subscribe(status => {
   console.log('State:', status.state);
+  console.log('Relay:', status.relay); // Cloudflare Worker URL
 });
 
-// Connect
-await connectRelay('ws://localhost:8080', privateKey);
+// Connect to serverless relay
+await connectRelay('wss://your-worker.workers.dev', privateKey);
 ```
 
 ### Publish Event
@@ -162,7 +251,7 @@ import { NDKEvent } from '@nostr-dev-kit/ndk';
 const event = new NDKEvent();
 event.kind = 1;
 event.content = 'Hello Nostr!';
-await publishEvent(event);
+await publishEvent(event); // Routes to EventShardDO
 ```
 
 ### Subscribe to Events
@@ -172,6 +261,22 @@ import { subscribe } from '$lib/nostr';
 const sub = subscribe({ kinds: [1], limit: 10 });
 sub.on('event', (event) => console.log(event));
 sub.start();
+```
+
+### Calendar Event (NIP-52)
+```typescript
+import { NDKEvent } from '@nostr-dev-kit/ndk';
+
+const calendarEvent = new NDKEvent();
+calendarEvent.kind = 31922;
+calendarEvent.content = 'Team Meeting';
+calendarEvent.tags = [
+  ['d', 'meeting-2025-01-15'],
+  ['start', '1737000000'],
+  ['end', '1737003600'],
+  ['cohort', 'team-alpha']
+];
+await publishEvent(calendarEvent);
 ```
 
 ## API Reference
@@ -220,12 +325,12 @@ class RelayManager {
 
 ### Core Functionality
 ✓ NDK instance initialization
-✓ Explicit relay URL configuration
+✓ Explicit relay URL configuration (Cloudflare Worker)
 ✓ NIP-42 AUTH signer
 ✓ Dexie cache adapter
 ✓ Connection management
-✓ Event publishing
-✓ Event subscriptions
+✓ Event publishing (to EventShardDO)
+✓ Event subscriptions (from EventShardDO)
 ✓ Connection state tracking
 
 ### Advanced Features
@@ -237,6 +342,16 @@ class RelayManager {
 ✓ User management
 ✓ Debug logging
 ✓ State monitoring
+
+### Serverless Features
+✓ WebSocket handling via ConnectionDO
+✓ Event sharding via EventShardDO
+✓ Session management via SessionManagerDO
+✓ D1 database integration
+✓ Whitelist verification
+✓ Cohort-based access control
+✓ Auto-scaling connections
+✓ Global edge distribution
 
 ### Documentation
 ✓ Complete API reference
@@ -255,23 +370,40 @@ All files are in proper subdirectories (not root):
 - Docs: `/src/lib/nostr/README.md`
 - Tests: `/src/lib/nostr/test-relay.ts`
 
-## Next Steps
+## Deployment
 
-1. Set environment variables in `.env`:
+### Cloudflare Workers Setup
+1. Deploy relay to Cloudflare Workers:
+   ```bash
+   cd relay
+   npm install
+   npx wrangler deploy
+   ```
+
+2. Configure D1 database:
+   ```bash
+   npx wrangler d1 create fairfield-nostr
+   npx wrangler d1 execute fairfield-nostr --file=schema.sql
+   ```
+
+3. Set Worker URL in `.env`:
    ```bash
    cp .env.example .env
-   # Edit .env with your relay URL
+   VITE_RELAY_URL=wss://your-worker.workers.dev
    ```
 
-2. Test connection:
-   ```bash
-   npx tsx src/lib/nostr/test-relay.ts
-   ```
+### Testing Connection
+```bash
+npx tsx src/lib/nostr/test-relay.ts
+```
 
-3. Import in your app:
-   ```typescript
-   import { connectRelay, publishEvent, subscribe } from '$lib/nostr';
-   ```
+### Import in App
+```typescript
+import { connectRelay, publishEvent, subscribe } from '$lib/nostr';
+
+// Connect to serverless relay
+await connectRelay(import.meta.env.VITE_RELAY_URL, privateKey);
+```
 
 ## Complete Implementation
 
@@ -287,5 +419,10 @@ All requirements met:
 9. ✓ Config with RELAY_URL and ADMIN_PUBKEY
 10. ✓ Complete TypeScript implementation
 11. ✓ No placeholders
+12. ✓ Serverless architecture with Cloudflare Workers
+13. ✓ Durable Objects for state management
+14. ✓ D1 database for persistence
+15. ✓ NIP-52 calendar events support
+16. ✓ Cohort-based access control
 
 Ready for use!

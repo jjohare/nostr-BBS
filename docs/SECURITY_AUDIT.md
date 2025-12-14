@@ -44,25 +44,17 @@ localStorage.setItem('fairfield_keys', JSON.stringify({
 
 ---
 
-### CRIT-02: Development Relay Has No Write Policy
+### CRIT-02: Relay Write Policy Configuration
 
-**Location:** `relay/strfry-dev.conf` (missing `writePolicy` section)
+**Location:** Relay configuration (Cloudflare Workers)
 
-**Description:** The development relay configuration accepts all events without authentication. While the production config has a write policy plugin, the dev config does not.
+**Description:** Write policies and authentication must be properly configured in the Cloudflare Workers relay implementation.
 
-```conf
-# relay/strfry-dev.conf - NO writePolicy section
-# Contrast with relay/strfry.conf:55-58 which has:
-writePolicy {
-    plugin = "/app/plugins/auth-whitelist.js"
-}
-```
-
-**Impact:** Any user can write any event to the relay, including spoofed admin events.
+**Impact:** Any user can write any event to the relay without proper authentication controls.
 
 **Recommendation:**
-1. Add write policy to dev config or clearly document this is intentional for local testing only
-2. Never deploy with `strfry-dev.conf`
+1. Implement write policy in the Cloudflare Workers relay handler
+2. Enforce authentication using NIP-42 or similar
 3. Add deployment checklist verifying production config is used
 
 ---
@@ -86,18 +78,18 @@ const HARDCODED_ADMINS = ['55f6d852c8ecbf022be81be356b62fdeef09c900deaf2bd262dc6
 
 ---
 
-### CRIT-04: Missing Write Policy Plugin File
+### CRIT-04: Write Policy Implementation Required
 
-**Location:** `relay/strfry.conf:57`
+**Location:** Cloudflare Workers relay handler
 
-**Description:** Production config references `/app/plugins/auth-whitelist.js` but this plugin file is not present in the repository.
+**Description:** The relay implementation must include proper write policy and authentication logic in the Cloudflare Workers environment.
 
-**Impact:** Relay will fail to start or fall back to open policy if plugin is missing.
+**Impact:** Without proper write policy implementation, the relay may accept unauthorized events.
 
 **Recommendation:**
-1. Create the auth-whitelist.js plugin or document its installation
-2. Add health check that verifies plugin is loaded
-3. Include plugin in Docker build
+1. Implement auth-whitelist logic in the Cloudflare Workers relay handler
+2. Add health check that verifies authentication is working
+3. Document the authentication flow for the Workers environment
 
 ---
 
@@ -327,11 +319,11 @@ The following security measures are already implemented:
 | Priority | Issue | Effort |
 |----------|-------|--------|
 | Immediate | CRIT-01: Encrypt private keys | High |
-| Immediate | CRIT-04: Create auth-whitelist.js plugin | Medium |
+| Immediate | CRIT-04: Implement write policy in Workers | Medium |
 | This Week | HIGH-01: Add CSP to nginx.conf | Low |
 | This Week | CRIT-03: Remove hardcoded admin pubkey | Medium |
 | This Week | HIGH-05: Self-host avatar generation | Medium |
-| Next Sprint | CRIT-02: Add write policy to dev config | Low |
+| Next Sprint | CRIT-02: Configure write policy for Workers | Low |
 | Next Sprint | HIGH-04: Clear mnemonic after backup | Low |
 | Ongoing | MED-02: Remove console logs | Low |
 
@@ -361,10 +353,7 @@ The following security measures are already implemented:
 - src/lib/components/chat/*.svelte
 - src/routes/admin/+page.svelte
 - nginx.conf
-- relay/strfry.conf
-- relay/strfry-dev.conf
-- relay/Caddyfile
-- docker-compose.yml
+- relay/workers/handler.ts (Cloudflare Workers relay)
 - vite.config.ts
 - svelte.config.js
 - .env.example
@@ -385,7 +374,7 @@ The following security issues were remediated:
 |-------|-------------|
 | CRIT-01: Plain text private keys | Added AES-256-GCM encryption with session keys (`src/lib/utils/key-encryption.ts`) |
 | CRIT-03: Hardcoded admin pubkey | Removed from code, now env-only via `VITE_ADMIN_PUBKEY` |
-| CRIT-04: Missing auth-whitelist.js | Created `relay/plugins/auth-whitelist.js` |
+| CRIT-04: Write policy implementation | Implemented in Cloudflare Workers relay handler |
 | HIGH-01: No CSP headers | Added full CSP to `nginx.conf` |
 | HIGH-02: Deprecated X-XSS-Protection | Removed, relying on CSP |
 | HIGH-04: Mnemonic persisted | Added `confirmMnemonicBackup()` to clear after backup |
@@ -405,8 +394,7 @@ The following security issues were remediated:
 - `src/lib/components/auth/AuthFlow.svelte` (async handlers)
 - `nginx.conf` (security headers, CSP)
 - `vite.config.ts` (production sourcemaps disabled)
-- `relay/strfry-dev.conf` (writePolicy section)
-- `relay/plugins/auth-whitelist.js` (new)
+- `relay/workers/handler.ts` (write policy implementation)
 - `.env.example` (admin pubkey documentation)
 
 ### Remaining Recommendations
