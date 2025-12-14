@@ -1,0 +1,114 @@
+name: Generate Note Embeddings
+
+on:
+  schedule:
+    # Run nightly at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+    inputs:
+      full_rebuild:
+        description: 'Force full index rebuild'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.11'
+  EMBEDDING_MODEL: 'sentence-transformers/all-MiniLM-L6-v2'
+  EMBEDDING_DIM: 384
+  R2_BUCKET: 'minimoonoir-embeddings'
+
+jobs:
+  generate-embeddings:
+    name: Generate and Upload Embeddings
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install \
+            sentence-transformers \
+            numpy \
+            websockets \
+            boto3 \
+            hnswlib \
+            tqdm
+
+      - name: Download previous manifest
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_R2_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY }}
+          CLOUDFLARE_R2_SECRET_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_KEY }}
+        run: |
+          python scripts/embeddings/download_manifest.py || echo '{"version": 0, "last_event_id": null}' > manifest.json
+          cat manifest.json
+
+      - name: Fetch notes from relay
+        env:
+          RELAY_URL: ${{ vars.RELAY_URL || 'wss://nosflare.solitary-paper-764d.workers.dev' }}
+        run: |
+          python scripts/embeddings/fetch_notes.py \
+            --relay "$RELAY_URL" \
+            --since-event "$(jq -r '.last_event_id // empty' manifest.json)" \
+            --output notes.json
+          echo "Fetched $(jq length notes.json) notes"
+
+      - name: Generate embeddings
+        run: |
+          python scripts/embeddings/generate_embeddings.py \
+            --input notes.json \
+            --model "$EMBEDDING_MODEL" \
+            --output embeddings.npz \
+            --quantize int8
+          echo "Generated embeddings for $(python -c 'import numpy as np; d=np.load("embeddings.npz"); print(len(d["ids"]))')"
+
+      - name: Build HNSW index
+        run: |
+          python scripts/embeddings/build_index.py \
+            --embeddings embeddings.npz \
+            --existing-index index.bin 2>/dev/null || true \
+            --output index.bin \
+            --m 16 \
+            --ef-construction 200
+
+      - name: Update manifest
+        run: |
+          python scripts/embeddings/update_manifest.py \
+            --notes notes.json \
+            --embeddings embeddings.npz \
+            --output manifest.json
+
+      - name: Upload to Cloudflare R2
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_R2_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY }}
+          CLOUDFLARE_R2_SECRET_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_KEY }}
+        run: |
+          python scripts/embeddings/upload_to_r2.py \
+            --bucket "$R2_BUCKET" \
+            --files index.bin embeddings.npz manifest.json \
+            --prefix "v$(jq -r '.version' manifest.json)"
+
+      - name: Summary
+        run: |
+          echo "## Embedding Generation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Model**: $EMBEDDING_MODEL" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dimensions**: $EMBEDDING_DIM" >> $GITHUB_STEP_SUMMARY
+          echo "- **Notes processed**: $(jq length notes.json)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Index version**: $(jq -r '.version' manifest.json)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Total vectors**: $(jq -r '.total_vectors' manifest.json)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Index size**: $(du -h index.bin | cut -f1)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Files uploaded to R2 bucket: $R2_BUCKET" >> $GITHUB_STEP_SUMMARY

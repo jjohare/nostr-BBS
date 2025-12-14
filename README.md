@@ -12,6 +12,7 @@ A privacy-first community messaging platform built on the Nostr protocol. Featur
 - **Public Chat Channels** - NIP-28 group messaging with cohort-based access control
 - **Calendar Events** - NIP-52 event scheduling with RSVP support
 - **Encrypted DMs** - NIP-17/59 gift-wrapped private messages
+- **Semantic Vector Search** - AI-powered similarity search with HNSW indexing (100k+ messages)
 - **PWA Support** - Installable app with offline message queue
 - **Serverless Architecture** - Zero infrastructure costs on free tier
 - **Cohort-Based Access** - Business, moomaa-tribe, and admin roles
@@ -136,6 +137,8 @@ graph TB
         CF["Cloudflare Workers<br/>✅ 100k req/day"]
         D1DB["D1 Database<br/>✅ 5GB storage"]
         DO["Durable Objects<br/>✅ 1M req/month"]
+        R2["Cloudflare R2<br/>✅ 10GB storage"]
+        GHA["GitHub Actions<br/>✅ 2000 min/month"]
     end
 
     subgraph Costs["Zero Cost Architecture"]
@@ -143,11 +146,175 @@ graph TB
         WS["WebSocket Connections"] -->|Free| DO
         Static["Static Hosting"] -->|Free| GH
         Edge["Edge Computing"] -->|Free| CF
+        Embeddings["Vector Index"] -->|Free| R2
+        Pipeline["Nightly Embedding"] -->|Free| GHA
     end
 
     style Free fill:#065f46,color:#fff
     style Costs fill:#064e3b,color:#fff
 ```
+
+## Semantic Vector Search
+
+Minimoonoir includes AI-powered semantic search that understands meaning, not just keywords. Search for "schedule tomorrow's meeting" and find messages about "planning the session for Friday" - the system understands context and intent.
+
+### Architecture Overview
+
+```mermaid
+graph TB
+    subgraph Pipeline["Nightly Embedding Pipeline"]
+        GHA["GitHub Actions<br/>Cron 3 AM UTC"]
+        Relay["Nostr Relay<br/>Fetch Messages"]
+        ST["sentence-transformers<br/>all-MiniLM-L6-v2"]
+        HNSW["hnswlib<br/>Build Index"]
+        R2["Cloudflare R2<br/>Store Index"]
+    end
+
+    subgraph PWA["PWA Client"]
+        WiFi{"WiFi<br/>Detection"}
+        Sync["Lazy Sync<br/>Background"]
+        IDB["IndexedDB<br/>Cache Index"]
+        WASM["hnswlib-wasm<br/>Local Search"]
+        UI["SemanticSearch<br/>Component"]
+    end
+
+    GHA -->|1. Trigger| Relay
+    Relay -->|2. Kind 1,9| ST
+    ST -->|3. 384d Vectors| HNSW
+    HNSW -->|4. Upload| R2
+
+    WiFi -->|5. Check Network| Sync
+    Sync -->|6. Download| R2
+    Sync -->|7. Store| IDB
+    IDB -->|8. Load| WASM
+    UI -->|9. Query| WASM
+    WASM -->|10. Results| UI
+
+    style Pipeline fill:#7c2d12,color:#fff
+    style PWA fill:#1e40af,color:#fff
+```
+
+### Key Features
+
+| Feature | Implementation | Benefit |
+|---------|----------------|---------|
+| **Semantic Understanding** | sentence-transformers/all-MiniLM-L6-v2 | Find by meaning, not just keywords |
+| **HNSW Index** | O(log n) approximate nearest neighbors | Sub-millisecond search on 100k+ vectors |
+| **Int8 Quantization** | 75% storage reduction | 100k messages = ~15MB index |
+| **WiFi-Only Sync** | Network Information API | Respects mobile data caps |
+| **Offline Search** | IndexedDB + hnswlib-wasm | Works without connectivity |
+| **Nightly Updates** | GitHub Actions cron | Always fresh index |
+
+### Data Flow
+
+```mermaid
+sequenceDiagram
+    participant GHA as GitHub Actions
+    participant Relay as Nostr Relay
+    participant R2 as Cloudflare R2
+    participant PWA as Browser PWA
+    participant IDB as IndexedDB
+    participant WASM as hnswlib-wasm
+
+    Note over GHA,R2: Nightly Pipeline (3 AM UTC)
+    GHA->>Relay: 1. Fetch kind 1 & 9 events
+    Relay-->>GHA: 2. Return messages
+    GHA->>GHA: 3. Generate embeddings (384d)
+    GHA->>GHA: 4. Quantize to int8
+    GHA->>GHA: 5. Build HNSW index
+    GHA->>R2: 6. Upload index + manifest
+
+    Note over PWA,WASM: User Opens App
+    PWA->>PWA: 7. Check WiFi connection
+    PWA->>R2: 8. Fetch manifest.json
+    R2-->>PWA: 9. Return version info
+
+    alt New Version Available
+        PWA->>R2: 10. Download index.bin
+        R2-->>PWA: 11. Return ~15MB index
+        PWA->>IDB: 12. Store in embeddings table
+    end
+
+    Note over PWA,WASM: User Searches
+    PWA->>IDB: 13. Load index
+    IDB-->>PWA: 14. Return ArrayBuffer
+    PWA->>WASM: 15. Initialize HNSW
+    PWA->>WASM: 16. searchKnn(query, k=10)
+    WASM-->>PWA: 17. Return note IDs + scores
+    PWA->>Relay: 18. Fetch full notes by ID
+    Relay-->>PWA: 19. Return decrypted content
+```
+
+### Technical Specifications
+
+```yaml
+Embedding Model:
+  name: sentence-transformers/all-MiniLM-L6-v2
+  dimensions: 384
+  performance: ~30 sec per 1,000 messages
+  quantization: int8 (75% size reduction)
+
+HNSW Index:
+  library: hnswlib (Python) + hnswlib-wasm (Browser)
+  space: cosine similarity
+  ef_construction: 200
+  M: 16
+  ef_search: 50
+
+Storage:
+  platform: Cloudflare R2
+  bucket: minimoonoir-embeddings
+  structure:
+    - latest/manifest.json
+    - latest/index.bin
+    - latest/index_mapping.json
+  versioning: Incremental (v1, v2, ...)
+
+Client Sync:
+  trigger: WiFi or unmetered connection
+  storage: IndexedDB (embeddings table)
+  lazy_load: true (background, non-blocking)
+```
+
+### Free Tier Budget
+
+| Resource | Limit | Usage (100k msgs) | Headroom |
+|----------|-------|-------------------|----------|
+| **GitHub Actions** | 2,000 min/month | ~60 min/month | 97% free |
+| **Cloudflare R2** | 10 GB storage | ~20 MB | 99.8% free |
+| **R2 Reads** | 10M reads/month | ~10k/month | 99.9% free |
+| **R2 Egress** | Unlimited | N/A | Always free |
+
+### Usage
+
+```typescript
+import { SemanticSearch } from '$lib/semantic';
+
+// In your Svelte component
+<SemanticSearch
+  onSelect={(noteId) => navigateToMessage(noteId)}
+  placeholder="Search by meaning..."
+/>
+```
+
+```typescript
+// Programmatic API
+import { searchSimilar, syncEmbeddings, isSearchAvailable } from '$lib/semantic';
+
+// Sync index (automatic on WiFi)
+await syncEmbeddings();
+
+// Search for similar messages
+const results = await searchSimilar('meeting tomorrow', 10, 0.5);
+// Returns: [{ noteId: 'abc123', score: 0.89, distance: 0.11 }, ...]
+```
+
+### Privacy Considerations
+
+- **No Content Storage**: Only embeddings stored, not message text
+- **Encrypted Messages Excluded**: NIP-17/59 DMs not indexed (v1)
+- **Local Processing**: Search runs entirely in browser via WASM
+- **User Control**: Manual sync button, no automatic uploads
 
 ## Nostr Implementation
 
@@ -417,6 +584,11 @@ minimoonoir/
 │   │   │   ├── reactions.ts # NIP-25 reactions
 │   │   │   ├── calendar.ts  # NIP-52 events
 │   │   │   └── relay.ts     # NDK relay manager
+│   │   ├── semantic/        # Semantic vector search
+│   │   │   ├── embeddings-sync.ts  # WiFi-only R2 sync
+│   │   │   ├── hnsw-search.ts      # WASM vector search
+│   │   │   ├── SemanticSearch.svelte # Search UI component
+│   │   │   └── index.ts            # Module exports
 │   │   ├── stores/          # Svelte stores
 │   │   │   ├── auth.ts      # Authentication state
 │   │   │   ├── channels.ts  # Channel subscriptions
@@ -444,10 +616,18 @@ minimoonoir/
 │   ├── wrangler.toml        # Free tier configuration
 │   ├── schema.sql           # D1 database schema
 │   └── CUSTOMIZATION.md     # Our customizations documentation
+├── scripts/
+│   └── embeddings/          # Embedding pipeline scripts
+│       ├── fetch_notes.py   # Fetch from Nostr relay
+│       ├── generate_embeddings.py  # sentence-transformers
+│       ├── build_index.py   # HNSW index builder
+│       ├── upload_to_r2.py  # Cloudflare R2 upload
+│       └── update_manifest.py  # Version manifest
 ├── .github/
 │   └── workflows/
 │       ├── deploy-pages.yml  # Frontend deployment to GitHub Pages
-│       └── deploy-relay.yml  # Backend deployment to Cloudflare Workers
+│       ├── deploy-relay.yml  # Backend deployment to Cloudflare Workers
+│       └── generate-embeddings.yml  # Nightly vector index pipeline
 ├── static/                  # Static assets
 │   ├── manifest.json        # PWA manifest
 │   └── icon-*.png           # PWA icons
@@ -468,6 +648,15 @@ minimoonoir/
 VITE_RELAY_URL=wss://nosflare.solitary-paper-764d.workers.dev
 VITE_ADMIN_PUBKEY=<hex-pubkey>              # Admin public key (64-char hex)
 VITE_NDK_DEBUG=false                         # Enable NDK debug logging
+
+# Semantic Search (R2 public URL)
+VITE_R2_EMBEDDINGS_URL=https://pub-minimoonoir.r2.dev
+
+# Embedding Pipeline (GitHub Actions secrets)
+CLOUDFLARE_ACCOUNT_ID=<account-id>           # Cloudflare account ID
+CLOUDFLARE_R2_ACCESS_KEY=<access-key>        # R2 API token access key
+CLOUDFLARE_R2_SECRET_KEY=<secret-key>        # R2 API token secret key
+NOSTR_RELAY_URL=wss://nosflare.*.workers.dev # Relay for fetching messages
 ```
 
 ### GitHub Configuration (for CI/CD)
@@ -483,6 +672,9 @@ VITE_NDK_DEBUG=false                         # Enable NDK debug logging
 | Secret | Description |
 |--------|-------------|
 | `CLOUDFLARE_API_TOKEN` | For relay deployment |
+| `CLOUDFLARE_ACCOUNT_ID` | For R2 embedding storage |
+| `CLOUDFLARE_R2_ACCESS_KEY` | R2 API token access key |
+| `CLOUDFLARE_R2_SECRET_KEY` | R2 API token secret key |
 
 The deploy workflow uses `${{ vars.ADMIN_PUBKEY }}` to inject the admin key at build time.
 
@@ -776,6 +968,12 @@ await sendChannelMessage(channelId, 'Hello channel!');
 - [Refinement](docs/sparc/04-refinement.md) - Implementation refinement
 - [Completion](docs/sparc/05-completion.md) - Integration and deployment
 
+### Semantic Search Documentation
+- [Semantic Search Spec](docs/sparc/06-semantic-search-spec.md) - Feature requirements (48 FRs)
+- [Search Architecture](docs/sparc/07-semantic-search-architecture.md) - System components and data flow
+- [Search Algorithms](docs/sparc/08-semantic-search-pseudocode.md) - HNSW and embedding algorithms
+- [Risk Assessment](docs/sparc/09-semantic-search-risks.md) - Integration risks and mitigations
+
 ## Contributing
 
 1. Fork the repository
@@ -811,7 +1009,16 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [Cloudflare Workers](https://workers.cloudflare.com) - Edge computing platform
 - [Cloudflare D1](https://developers.cloudflare.com/d1) - Serverless SQLite database
 - [Cloudflare Durable Objects](https://developers.cloudflare.com/workers/runtime-apis/durable-objects) - Stateful serverless storage
+- [Cloudflare R2](https://developers.cloudflare.com/r2) - Object storage for vector embeddings
 - [GitHub Pages](https://pages.github.com) - Static site hosting
+- [GitHub Actions](https://github.com/features/actions) - CI/CD for embedding pipeline
+
+### Machine Learning
+
+- [sentence-transformers](https://www.sbert.net/) - Multilingual sentence embeddings
+- [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) - Compact 384d embedding model
+- [hnswlib](https://github.com/nmslib/hnswlib) - Fast approximate nearest neighbor search
+- [hnswlib-wasm](https://github.com/nicholascannon/hnswlib-wasm) - Browser-native HNSW via WebAssembly
 
 ### Development Tools
 

@@ -101,6 +101,23 @@ export interface DBSearchHistory {
 }
 
 /**
+ * Embedding data stored in IndexedDB
+ */
+export interface DBEmbedding {
+  key: string;
+  data: ArrayBuffer;
+  version: number;
+}
+
+/**
+ * Metadata storage for sync state and other config
+ */
+export interface DBMetadata {
+  key: string;
+  value: unknown;
+}
+
+/**
  * Minimoomaa Noir Database
  */
 class MinimoomaNoirDB extends Dexie {
@@ -111,6 +128,8 @@ class MinimoomaNoirDB extends Dexie {
   relays!: Table<DBRelay, string>;
   searchIndex!: Table<DBSearchIndex, string>;
   searchHistory!: Table<DBSearchHistory, number>;
+  embeddings!: Table<DBEmbedding, string>;
+  metadata!: Table<DBMetadata, string>;
 
   constructor() {
     super('MinimoomaNoirDB');
@@ -132,6 +151,19 @@ class MinimoomaNoirDB extends Dexie {
       relays: 'url, connected, lastConnected',
       searchIndex: 'id, messageId, channelId, authorPubkey, timestamp, *tokens',
       searchHistory: '++id, timestamp'
+    });
+
+    // Version 3: Add semantic search tables for HNSW index and embeddings
+    this.version(3).stores({
+      messages: 'id, channelId, pubkey, created_at, deleted, [channelId+created_at]',
+      channels: 'id, creatorPubkey, created_at, isPrivate, isEncrypted',
+      users: 'pubkey, cached_at',
+      deletions: 'id, deletedEventId, channelId, deleterPubkey, created_at',
+      relays: 'url, connected, lastConnected',
+      searchIndex: 'id, messageId, channelId, authorPubkey, timestamp, *tokens',
+      searchHistory: '++id, timestamp',
+      embeddings: 'key, version',
+      metadata: 'key'
     });
   }
 
