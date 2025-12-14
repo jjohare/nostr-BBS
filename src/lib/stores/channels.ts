@@ -1,6 +1,7 @@
 import { writable, derived, get } from 'svelte/store';
 import type NDK from '@nostr-dev-kit/ndk';
 import type { NDKEvent, NDKFilter, NDKRelay } from '@nostr-dev-kit/ndk';
+import type { ChannelSection, ChannelVisibility } from '$lib/types/channel';
 
 // Channel interface as per SPARC specification
 export interface Channel {
@@ -9,7 +10,8 @@ export interface Channel {
   description: string;
   picture?: string;                              // Avatar URL
   cohorts: ('business' | 'moomaa-tribe')[];
-  visibility: 'listed' | 'unlisted' | 'preview';
+  section: ChannelSection;                       // Section category
+  visibility: ChannelVisibility;                 // Visibility within section
   isEncrypted: boolean;                          // E2E vs transport only
   memberCount: number;
   createdAt: number;
@@ -197,16 +199,20 @@ function buildChannelFromEvents(
     return requestChannelId === groupId;
   });
 
-  // Extract visibility setting
+  // Extract section tag (default to fairfield-guests)
+  const sectionTag = metaEvent.tags.find(t => t[0] === 'section')?.[1];
+  const section = (sectionTag as ChannelSection) || 'fairfield-guests';
+
+  // Extract visibility setting (default to public)
   const visibilityTag = metaEvent.tags.find(t => t[0] === 'visibility')?.[1];
-  const visibility = (visibilityTag as 'listed' | 'unlisted' | 'preview') || 'listed';
+  const visibility = (visibilityTag as ChannelVisibility) || 'public';
 
   // Check if channel is encrypted (E2E)
   const isEncrypted = metaEvent.tags.some(t => t[0] === 'encrypted');
 
-  // Handle visibility filtering for non-members
-  if (!isMember && visibility === 'unlisted') {
-    return null;  // Unlisted channels hidden from non-members
+  // Handle visibility filtering for non-members (cohort channels are invisible to non-cohort users)
+  if (!isMember && visibility === 'cohort') {
+    return null;  // Cohort channels hidden from non-assigned users
   }
 
   return {
@@ -215,6 +221,7 @@ function buildChannelFromEvents(
     description: metadata.about || '',
     picture: metadata.picture,
     cohorts: channelCohorts,
+    section,
     visibility,
     isEncrypted,
     memberCount,
@@ -260,7 +267,7 @@ export function getMemberChannels() {
  */
 export function getAvailableChannels() {
   if (!_availableChannels) {
-    _availableChannels = derived(channelStore, $store => $store.channels.filter(c => !c.isMember && c.visibility !== 'unlisted'));
+    _availableChannels = derived(channelStore, $store => $store.channels.filter(c => !c.isMember && c.visibility === 'public'));
   }
   return _availableChannels;
 }
@@ -281,6 +288,68 @@ export function getChannelsByCohort(cohort: 'business' | 'moomaa-tribe'): Channe
   const state = get(channelStore);
   return state.channels.filter(c => c.cohorts.includes(cohort));
 }
+
+/**
+ * Filter channels by section
+ */
+export function getChannelsBySection(section: ChannelSection): Channel[] {
+  const state = get(channelStore);
+  return state.channels.filter(c => c.section === section);
+}
+
+// Lazy-initialized derived stores for section filtering
+let _fairfieldGuestChannels: ReturnType<typeof derived<typeof channelStore, Channel[]>> | null = null;
+let _minimoonoirChannels: ReturnType<typeof derived<typeof channelStore, Channel[]>> | null = null;
+let _dreamlabChannels: ReturnType<typeof derived<typeof channelStore, Channel[]>> | null = null;
+
+/**
+ * Get channels for fairfield-guests section (lazy initialization)
+ */
+export function getFairfieldGuestChannels() {
+  if (!_fairfieldGuestChannels) {
+    _fairfieldGuestChannels = derived(channelStore, $store =>
+      $store.channels.filter(c => c.section === 'fairfield-guests')
+    );
+  }
+  return _fairfieldGuestChannels;
+}
+
+/**
+ * Get channels for minimoonoir-rooms section (lazy initialization)
+ */
+export function getMinimoonoirChannels() {
+  if (!_minimoonoirChannels) {
+    _minimoonoirChannels = derived(channelStore, $store =>
+      $store.channels.filter(c => c.section === 'minimoonoir-rooms')
+    );
+  }
+  return _minimoonoirChannels;
+}
+
+/**
+ * Get channels for dreamlab section (lazy initialization)
+ */
+export function getDreamlabChannels() {
+  if (!_dreamlabChannels) {
+    _dreamlabChannels = derived(channelStore, $store =>
+      $store.channels.filter(c => c.section === 'dreamlab')
+    );
+  }
+  return _dreamlabChannels;
+}
+
+// Backwards-compatible exports for section filtering
+export const fairfieldGuestChannels = {
+  subscribe: (fn: (value: Channel[]) => void) => getFairfieldGuestChannels().subscribe(fn)
+};
+
+export const minimoonoirChannels = {
+  subscribe: (fn: (value: Channel[]) => void) => getMinimoonoirChannels().subscribe(fn)
+};
+
+export const dreamlabChannels = {
+  subscribe: (fn: (value: Channel[]) => void) => getDreamlabChannels().subscribe(fn)
+};
 
 /**
  * Clear all channels (e.g., on logout)
@@ -321,6 +390,7 @@ export const channelStore = {
   setCurrentChannel,
   getCurrentChannel,
   getChannelsByCohort,
+  getChannelsBySection,
   clearChannels,
   updateChannel,
   removeChannel,

@@ -64,3 +64,25 @@ export {
   createIsMutedStore
 } from './mute';
 export type { MutedUser, MuteState } from './mute';
+
+export {
+  sectionStore,
+  accessibleSections,
+  pendingSections,
+  pendingRequestCount,
+  canSeeChannel
+} from './sections';
+
+export {
+  SECTION_CONFIG
+} from '$lib/types/channel';
+export type {
+  ChannelSection,
+  ChannelVisibility,
+  SectionAccessStatus,
+  SectionStats,
+  UserSectionAccess,
+  SectionAccessRequest,
+  CalendarAccessLevel,
+  SectionConfig
+} from '$lib/types/channel';
