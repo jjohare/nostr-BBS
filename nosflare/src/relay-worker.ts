@@ -20,6 +20,9 @@ const {
   allowedNip05Domains,
   MAX_TIME_WINDOWS_PER_QUERY,
   CONNECTION_DO_SHARDING_ENABLED,
+  isAdminPubkey,
+  getPubkeyCohorts,
+  isPubkeyAllowed,
 } = config;
 
 const GLOBAL_MAX_EVENTS = 1000;
@@ -638,6 +641,16 @@ export default {
         return await handleCheckPayment(request, env);
       }
 
+      // Admin verification endpoint - server-side source of truth
+      if (url.pathname === "/api/verify-admin") {
+        return handleVerifyAdmin(request);
+      }
+
+      // Whitelist verification endpoint - returns full user status
+      if (url.pathname === "/api/check-whitelist") {
+        return handleCheckWhitelist(request);
+      }
+
       if (url.pathname === "/") {
         if (request.headers.get("Upgrade") === "websocket") {
           const doId = CONNECTION_DO_SHARDING_ENABLED
@@ -1241,4 +1254,105 @@ async function handlePaymentNotification(request: Request, env: Env): Promise<Re
       }
     });
   }
+}
+
+/**
+ * Handle admin verification request
+ * Returns whether a pubkey has admin privileges
+ */
+function handleVerifyAdmin(request: Request): Response {
+  const url = new URL(request.url);
+  const pubkey = url.searchParams.get('pubkey');
+
+  if (!pubkey) {
+    return new Response(JSON.stringify({ error: 'Missing pubkey parameter' }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
+  }
+
+  // Validate pubkey format (64 hex characters)
+  if (!/^[a-f0-9]{64}$/i.test(pubkey)) {
+    return new Response(JSON.stringify({ error: 'Invalid pubkey format' }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
+  }
+
+  const isAdmin = isAdminPubkey(pubkey);
+
+  return new Response(JSON.stringify({
+    pubkey,
+    isAdmin,
+    verifiedAt: Date.now()
+  }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Cache-Control': 'public, max-age=60' // Cache for 1 minute
+    }
+  });
+}
+
+/**
+ * Handle whitelist verification request
+ * Returns full user status including admin, cohorts, and write access
+ */
+function handleCheckWhitelist(request: Request): Response {
+  const url = new URL(request.url);
+  const pubkey = url.searchParams.get('pubkey');
+
+  if (!pubkey) {
+    return new Response(JSON.stringify({ error: 'Missing pubkey parameter' }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
+  }
+
+  // Validate pubkey format (64 hex characters)
+  if (!/^[a-f0-9]{64}$/i.test(pubkey)) {
+    return new Response(JSON.stringify({ error: 'Invalid pubkey format' }), {
+      status: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
+  }
+
+  const isAdmin = isAdminPubkey(pubkey);
+  const isWhitelisted = isPubkeyAllowed(pubkey);
+  const cohorts = getPubkeyCohorts(pubkey);
+
+  return new Response(JSON.stringify({
+    pubkey,
+    isWhitelisted,
+    isAdmin,
+    cohorts,
+    verifiedAt: Date.now(),
+    source: 'relay'
+  }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Cache-Control': 'public, max-age=60' // Cache for 1 minute
+    }
+  });
 }

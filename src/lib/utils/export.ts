@@ -138,7 +138,7 @@ export function exportToText(messages: ExportMessage[], options: ExportOptions):
 
   // Header
   lines.push('='.repeat(80));
-  lines.push('Minimoonoir Message Export');
+  lines.push('Minimoomaa Noir Message Export');
   lines.push(`Export Date: ${new Date().toISOString()}`);
   lines.push(`Total Messages: ${messages.length}`);
 

@@ -2,7 +2,9 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
-  import { authStore, isAdmin } from '$lib/stores/auth';
+  import { authStore } from '$lib/stores/auth';
+  import { isAdminVerified, whitelistStatusStore } from '$lib/stores/user';
+  import { verifyWhitelistStatus } from '$lib/nostr/whitelist';
   import { setSigner, connectNDK, getRelayUrls, reconnectNDK } from '$lib/nostr/ndk';
   import { createChannel, fetchChannels, type CreatedChannel } from '$lib/nostr/channels';
   import { settingsStore } from '$lib/stores/settings';
@@ -135,17 +137,33 @@
     // Wait for auth store to be ready before checking authentication
     await authStore.waitForReady();
 
-    if (!$isAdmin) {
+    if (!$authStore.publicKey) {
       goto(`${base}/chat`);
       return;
     }
 
-    initializeAdmin();
+    // Verify admin status via relay (server-side source of truth)
+    try {
+      isLoading = true;
+      const status = await verifyWhitelistStatus($authStore.publicKey);
+      whitelistStatusStore.set(status);
+
+      if (!status.isAdmin) {
+        error = 'Access denied: Admin privileges required';
+        setTimeout(() => goto(`${base}/chat`), 2000);
+        return;
+      }
+
+      initializeAdmin();
+    } catch (e) {
+      error = 'Failed to verify admin status';
+      setTimeout(() => goto(`${base}/chat`), 2000);
+    }
   });
 </script>
 
 <svelte:head>
-  <title>Admin Dashboard - Minimoomaa Noir</title>
+  <title>Admin Dashboard - Minimoonoir</title>
 </svelte:head>
 
 <div class="container mx-auto p-4 max-w-6xl">

@@ -87,10 +87,17 @@ export const blockedPubkeys = new Set([
   "53a756bb596055219d93e888f71d936ec6c47d960320476c955efd8941af4362"
 ]);
 
+// Admin pubkeys - have full admin privileges
+// These pubkeys can manage whitelist, create channels, and perform admin actions
+export const adminPubkeys = new Set<string>([
+  // Primary admin pubkey
+  "d2508ff0e0f4f0791d25fac8a8e400fa2930086c2fe50c7dbb7f265aeffe2031",
+]);
+
 // Allowed pubkeys
 // Add pubkeys in hex format to allow write access
 export const allowedPubkeys = new Set<string>([
-  // Admin pubkey
+  // Admin pubkey (also in allowedPubkeys for write access)
   "d2508ff0e0f4f0791d25fac8a8e400fa2930086c2fe50c7dbb7f265aeffe2031",
   // Test user for DeepSeek evaluation
   "8d70f935c1a795588306a1a4ae36b44a378ec00acfbfcf428d198b4575f7e3d3",
@@ -233,4 +240,27 @@ export function isTagAllowed(tag: string): boolean {
     return false;
   }
   return !blockedTags.has(tag);
+}
+
+/**
+ * Check if a pubkey is an admin
+ * Used for privileged operations like whitelist management
+ */
+export function isAdminPubkey(pubkey: string): boolean {
+  return adminPubkeys.has(pubkey);
+}
+
+/**
+ * Get cohorts for a pubkey
+ * Returns admin cohort if pubkey is in adminPubkeys, otherwise checks allowedPubkeys
+ */
+export function getPubkeyCohorts(pubkey: string): string[] {
+  const cohorts: string[] = [];
+  if (adminPubkeys.has(pubkey)) {
+    cohorts.push('admin');
+  }
+  if (allowedPubkeys.has(pubkey)) {
+    cohorts.push('approved');
+  }
+  return cohorts;
 }

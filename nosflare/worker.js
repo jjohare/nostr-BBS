@@ -2203,6 +2203,7 @@ __export(config_exports, {
   RELAY_ACCESS_PRICE_SATS: () => RELAY_ACCESS_PRICE_SATS,
   REQ_RATE_LIMIT: () => REQ_RATE_LIMIT,
   SESSION_MANAGER_SHARD_COUNT: () => SESSION_MANAGER_SHARD_COUNT,
+  adminPubkeys: () => adminPubkeys,
   allowedEventKinds: () => allowedEventKinds,
   allowedNip05Domains: () => allowedNip05Domains,
   allowedPubkeys: () => allowedPubkeys,
@@ -2215,6 +2216,8 @@ __export(config_exports, {
   checkValidNip05: () => checkValidNip05,
   containsBlockedContent: () => containsBlockedContent,
   excludedRateLimitKinds: () => excludedRateLimitKinds,
+  getPubkeyCohorts: () => getPubkeyCohorts,
+  isAdminPubkey: () => isAdminPubkey,
   isEventKindAllowed: () => isEventKindAllowed,
   isPubkeyAllowed: () => isPubkeyAllowed,
   isTagAllowed: () => isTagAllowed,
@@ -2251,7 +2254,20 @@ function isTagAllowed(tag) {
   }
   return !blockedTags.has(tag);
 }
-var relayNpub, PAY_TO_RELAY_ENABLED, RELAY_ACCESS_PRICE_SATS, relayInfo, nip05Users, blockedPubkeys, allowedPubkeys, blockedEventKinds, allowedEventKinds, blockedContent, checkValidNip05, blockedNip05Domains, allowedNip05Domains, blockedTags, allowedTags, CONNECTION_DO_SHARDING_ENABLED, SESSION_MANAGER_SHARD_COUNT, MAX_TIME_WINDOWS_PER_QUERY, READ_REPLICAS_PER_SHARD, PAYMENT_DO_SHARDING_ENABLED, PUBKEY_RATE_LIMIT, REQ_RATE_LIMIT, excludedRateLimitKinds, CREATED_AT_LOWER_LIMIT, CREATED_AT_UPPER_LIMIT, AUTH_REQUIRED;
+function isAdminPubkey(pubkey) {
+  return adminPubkeys.has(pubkey);
+}
+function getPubkeyCohorts(pubkey) {
+  const cohorts = [];
+  if (adminPubkeys.has(pubkey)) {
+    cohorts.push("admin");
+  }
+  if (allowedPubkeys.has(pubkey)) {
+    cohorts.push("approved");
+  }
+  return cohorts;
+}
+var relayNpub, PAY_TO_RELAY_ENABLED, RELAY_ACCESS_PRICE_SATS, relayInfo, nip05Users, blockedPubkeys, adminPubkeys, allowedPubkeys, blockedEventKinds, allowedEventKinds, blockedContent, checkValidNip05, blockedNip05Domains, allowedNip05Domains, blockedTags, allowedTags, CONNECTION_DO_SHARDING_ENABLED, SESSION_MANAGER_SHARD_COUNT, MAX_TIME_WINDOWS_PER_QUERY, READ_REPLICAS_PER_SHARD, PAYMENT_DO_SHARDING_ENABLED, PUBKEY_RATE_LIMIT, REQ_RATE_LIMIT, excludedRateLimitKinds, CREATED_AT_LOWER_LIMIT, CREATED_AT_UPPER_LIMIT, AUTH_REQUIRED;
 var init_config = __esm({
   "src/config.ts"() {
     "use strict";
@@ -2322,8 +2338,15 @@ var init_config = __esm({
       "05aee96dd41429a3ae97a9dac4dfc6867fdfacebca3f3bdc051e5004b0751f01",
       "53a756bb596055219d93e888f71d936ec6c47d960320476c955efd8941af4362"
     ]);
+    adminPubkeys = /* @__PURE__ */ new Set([
+      // Primary admin pubkey
+      "d2508ff0e0f4f0791d25fac8a8e400fa2930086c2fe50c7dbb7f265aeffe2031"
+    ]);
     allowedPubkeys = /* @__PURE__ */ new Set([
-      // ... pubkeys that are explicitly allowed
+      // Admin pubkey (also in allowedPubkeys for write access)
+      "d2508ff0e0f4f0791d25fac8a8e400fa2930086c2fe50c7dbb7f265aeffe2031",
+      // Test user for DeepSeek evaluation
+      "8d70f935c1a795588306a1a4ae36b44a378ec00acfbfcf428d198b4575f7e3d3"
     ]);
     blockedEventKinds = /* @__PURE__ */ new Set([
       1064
@@ -2369,6 +2392,8 @@ var init_config = __esm({
     __name(isEventKindAllowed, "isEventKindAllowed");
     __name(containsBlockedContent, "containsBlockedContent");
     __name(isTagAllowed, "isTagAllowed");
+    __name(isAdminPubkey, "isAdminPubkey");
+    __name(getPubkeyCohorts, "getPubkeyCohorts");
   }
 });
 
@@ -5602,7 +5627,10 @@ var {
   blockedNip05Domains: blockedNip05Domains2,
   allowedNip05Domains: allowedNip05Domains2,
   MAX_TIME_WINDOWS_PER_QUERY: MAX_TIME_WINDOWS_PER_QUERY2,
-  CONNECTION_DO_SHARDING_ENABLED: CONNECTION_DO_SHARDING_ENABLED2
+  CONNECTION_DO_SHARDING_ENABLED: CONNECTION_DO_SHARDING_ENABLED2,
+  isAdminPubkey: isAdminPubkey2,
+  getPubkeyCohorts: getPubkeyCohorts2,
+  isPubkeyAllowed: isPubkeyAllowed2
 } = config_exports;
 var GLOBAL_MAX_EVENTS = 1e3;
 var MAX_QUERY_COMPLEXITY = 1e3;
@@ -6117,6 +6145,12 @@ var relay_worker_default = {
       }
       if (url.pathname === "/api/check-payment" && PAY_TO_RELAY_ENABLED2) {
         return await handleCheckPayment(request, env);
+      }
+      if (url.pathname === "/api/verify-admin") {
+        return handleVerifyAdmin(request);
+      }
+      if (url.pathname === "/api/check-whitelist") {
+        return handleCheckWhitelist(request);
       }
       if (url.pathname === "/") {
         if (request.headers.get("Upgrade") === "websocket") {
@@ -6692,6 +6726,91 @@ async function handlePaymentNotification(request, env) {
   }
 }
 __name(handlePaymentNotification, "handlePaymentNotification");
+function handleVerifyAdmin(request) {
+  const url = new URL(request.url);
+  const pubkey = url.searchParams.get("pubkey");
+  if (!pubkey) {
+    return new Response(JSON.stringify({ error: "Missing pubkey parameter" }), {
+      status: 400,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type"
+      }
+    });
+  }
+  if (!/^[a-f0-9]{64}$/i.test(pubkey)) {
+    return new Response(JSON.stringify({ error: "Invalid pubkey format" }), {
+      status: 400,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type"
+      }
+    });
+  }
+  const isAdmin = isAdminPubkey2(pubkey);
+  return new Response(JSON.stringify({
+    pubkey,
+    isAdmin,
+    verifiedAt: Date.now()
+  }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Cache-Control": "public, max-age=60"
+      // Cache for 1 minute
+    }
+  });
+}
+__name(handleVerifyAdmin, "handleVerifyAdmin");
+function handleCheckWhitelist(request) {
+  const url = new URL(request.url);
+  const pubkey = url.searchParams.get("pubkey");
+  if (!pubkey) {
+    return new Response(JSON.stringify({ error: "Missing pubkey parameter" }), {
+      status: 400,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type"
+      }
+    });
+  }
+  if (!/^[a-f0-9]{64}$/i.test(pubkey)) {
+    return new Response(JSON.stringify({ error: "Invalid pubkey format" }), {
+      status: 400,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type"
+      }
+    });
+  }
+  const isAdmin = isAdminPubkey2(pubkey);
+  const isWhitelisted = isPubkeyAllowed2(pubkey);
+  const cohorts = getPubkeyCohorts2(pubkey);
+  return new Response(JSON.stringify({
+    pubkey,
+    isWhitelisted,
+    isAdmin,
+    cohorts,
+    verifiedAt: Date.now(),
+    source: "relay"
+  }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Cache-Control": "public, max-age=60"
+      // Cache for 1 minute
+    }
+  });
+}
+__name(handleCheckWhitelist, "handleCheckWhitelist");
 
 // src/connection-do.ts
 var DEBUG3 = false;
