@@ -195,7 +195,8 @@
 	}
 
 	.card-interactive:hover {
-		@apply shadow-lg transform scale-[1.02] border-primary/30;
+		@apply shadow-lg transform scale-[1.02];
+		border-color: oklch(var(--p) / 0.3);
 	}
 
 	.card-interactive:active {
@@ -211,7 +212,9 @@
 	.input:focus,
 	.textarea:focus,
 	.select:focus {
-		@apply border-primary shadow-lg shadow-primary/20 transition-all duration-200;
+		@apply shadow-lg transition-all duration-200;
+		border-color: oklch(var(--p));
+		--tw-shadow-color: oklch(var(--p) / 0.2);
 	}
 
 	/* Smooth list item hover */
