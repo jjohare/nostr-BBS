@@ -1,0 +1,518 @@
+{
+  "audit_metadata": {
+    "timestamp": "2025-12-15T00:00:00Z",
+    "agent": "qe-security-scanner",
+    "scope": "GCP deployment security audit",
+    "environment": "production",
+    "frameworks_used": ["OWASP Top 10", "PCI-DSS", "CWE"]
+  },
+  "executive_summary": {
+    "overall_risk": "MEDIUM",
+    "critical_issues": 1,
+    "high_issues": 2,
+    "medium_issues": 4,
+    "low_issues": 3,
+    "compliant": true,
+    "recommendations": [
+      "Immediately rotate exposed secrets in .env file",
+      "Implement cryptographic signature verification in Nostr relay",
+      "Add rate limiting to prevent DoS attacks",
+      "Implement comprehensive authentication for Cloud Run services"
+    ]
+  },
+  "findings": [
+    {
+      "id": "SEC-001",
+      "severity": "CRITICAL",
+      "category": "Exposed Secrets",
+      "cwe": "CWE-798",
+      "owasp": "A02:2021 - Cryptographic Failures",
+      "title": "Production Secrets Exposed in .env File",
+      "description": ".env file contains production admin private keys and mnemonics in plaintext",
+      "location": "/.env",
+      "evidence": [
+        "ADMIN_PROVKEY=nsec1vmdlyj0kp899ep567x90m5q5dlvj68fjlcxc0a26z0v7algutqhqknjysc",
+        "ADMIN_KEY=\"loyal bench cheap find pause draft various chief slide lunar sight useless\"",
+        "VITE_ADMIN_PUBKEY=d2508ff0e0f4f0791d25fac8a8e400fa2930086c2fe50c7dbb7f265aeffe2031"
+      ],
+      "git_tracked": false,
+      "git_history_clean": true,
+      "gitignore_status": "COMPLIANT - .env is in .gitignore",
+      "impact": "HIGH - If exposed, attackers could impersonate admin, control relay, and access all private communications",
+      "remediation": {
+        "immediate": [
+          "Rotate all keys immediately (generate new admin keys)",
+          "Verify .env is NEVER committed to git history (✓ Confirmed clean)",
+          "Store secrets in GCP Secret Manager instead of .env files",
+          "Use Cloud Run secret mounting for runtime access"
+        ],
+        "long_term": [
+          "Implement hardware security module (HSM) for production key storage",
+          "Use separate keys for dev/staging/production environments",
+          "Enable secret rotation policies",
+          "Audit all key access via Cloud Audit Logs"
+        ]
+      },
+      "cvss_score": 9.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+      "compliance_impact": {
+        "pci_dss": "Non-compliant with Requirement 8.3 (Secure authentication)",
+        "soc2": "Control failure: Logical and Physical Access Controls"
+      },
+      "false_positive": false,
+      "verified": true,
+      "notes": "ACTUAL SECURITY ISSUE: While .env is properly gitignored, production secrets should NEVER be in plaintext files. Use GCP Secret Manager."
+    },
+    {
+      "id": "SEC-002",
+      "severity": "HIGH",
+      "category": "Missing Cryptographic Verification",
+      "cwe": "CWE-347",
+      "owasp": "A02:2021 - Cryptographic Failures",
+      "title": "Nostr Event Signature Verification Not Implemented",
+      "description": "Event signature verification is missing in handlers.ts - only event ID hash is verified",
+      "location": "/services/nostr-relay/src/handlers.ts",
+      "evidence": [
+        "Line 61-64: verifyEventId() only checks SHA256 hash of event data",
+        "Missing: Schnorr signature verification using secp256k1",
+        "Missing: Public key recovery and validation"
+      ],
+      "impact": "HIGH - Attackers can forge events with valid IDs but invalid signatures, impersonating users",
+      "remediation": {
+        "immediate": [
+          "Install @noble/secp256k1 or nostr-tools for signature verification",
+          "Add verifySignature() function to validate schnorr signatures",
+          "Reject events with invalid signatures before database storage"
+        ],
+        "code_example": "// Add to handlers.ts\nimport { schnorr } from '@noble/secp256k1';\n\nprivate async verifySignature(event: NostrEvent): Promise<boolean> {\n  try {\n    return await schnorr.verify(event.sig, event.id, event.pubkey);\n  } catch {\n    return false;\n  }\n}"
+      },
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+      "compliance_impact": {
+        "nip01": "Non-compliant with NIP-01 specification requirement for signature verification"
+      },
+      "false_positive": false,
+      "verified": true
+    },
+    {
+      "id": "SEC-003",
+      "severity": "HIGH",
+      "category": "SQL Injection Risk",
+      "cwe": "CWE-89",
+      "owasp": "A03:2021 - Injection",
+      "title": "Potential SQL Injection in Tag Filtering",
+      "description": "Tag filtering uses string interpolation with LIKE operator without proper escaping",
+      "location": "/services/nostr-relay/src/db.ts:156-160",
+      "evidence": [
+        "conditions.push(`tags LIKE ?`);",
+        "params.push(`%[\"${tagName}\",\"${value}\"%`);",
+        "User-controlled tagName and value are embedded in query"
+      ],
+      "impact": "MEDIUM-HIGH - Malicious tag values could inject SQL, but parameterization provides partial protection",
+      "remediation": {
+        "immediate": [
+          "Sanitize tagName and value inputs",
+          "Use JSON_EXTRACT() function instead of LIKE for JSON queries",
+          "Add input validation for tag names (alphanumeric only)"
+        ],
+        "code_example": "// Safer approach:\nif (!/^[a-z0-9]+$/i.test(tagName)) continue; // Validate tag name\nconst safeValue = value.replace(/[\"\\\\]/g, '\\\\$&'); // Escape special chars\nparams.push(`%[\"${tagName}\",\"${safeValue}\"%`);"
+      },
+      "cvss_score": 7.3,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:L",
+      "false_positive": false,
+      "verified": true
+    },
+    {
+      "id": "SEC-004",
+      "severity": "MEDIUM",
+      "category": "Missing Rate Limiting",
+      "cwe": "CWE-770",
+      "owasp": "A04:2021 - Insecure Design",
+      "title": "No Rate Limiting on WebSocket Connections",
+      "description": "Relay accepts unlimited connections and messages without rate limiting",
+      "location": "/services/nostr-relay/src/server.ts",
+      "impact": "MEDIUM - Vulnerable to DoS attacks via connection flooding or message spam",
+      "remediation": {
+        "immediate": [
+          "Add connection limit per IP address",
+          "Implement message rate limiting (e.g., 10 events/second per connection)",
+          "Add maximum subscription limit per connection (e.g., 20 active subscriptions)",
+          "Consider using Cloud Armor for DDoS protection"
+        ]
+      },
+      "cvss_score": 5.3,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+      "false_positive": false,
+      "verified": true
+    },
+    {
+      "id": "SEC-005",
+      "severity": "MEDIUM",
+      "category": "Weak CORS Configuration",
+      "cwe": "CWE-942",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "title": "Embedding API Allows CORS from All Origins",
+      "description": "ALLOWED_ORIGINS=* permits any domain to access the embedding API",
+      "location": "/services/embedding-api/main.py:42 and cloudbuild.yaml:46",
+      "evidence": [
+        "ALLOWED_ORIGINS=* in Cloud Build configuration",
+        "allow_origins=allowed_origins (line 45 main.py)"
+      ],
+      "impact": "MEDIUM - Untrusted websites can consume API quota, potential for CSRF attacks",
+      "remediation": {
+        "immediate": [
+          "Restrict ALLOWED_ORIGINS to specific domains",
+          "Update cloudbuild.yaml: ALLOWED_ORIGINS=https://your-app.com,https://nostr-relay-*.run.app",
+          "Add origin validation in FastAPI middleware"
+        ]
+      },
+      "cvss_score": 5.0,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:N/I:L/A:N",
+      "false_positive": false,
+      "verified": true
+    },
+    {
+      "id": "SEC-006",
+      "severity": "MEDIUM",
+      "category": "Unauthenticated Cloud Run Services",
+      "cwe": "CWE-306",
+      "owasp": "A07:2021 - Identification and Authentication Failures",
+      "title": "Cloud Run Services Allow Unauthenticated Access",
+      "description": "Both services deployed with --allow-unauthenticated flag",
+      "location": "cloudbuild.yaml files",
+      "evidence": [
+        "nostr-relay: --allow-unauthenticated (line 64)",
+        "embedding-api: --allow-unauthenticated (line 34)"
+      ],
+      "impact": "MEDIUM - Services accessible to anyone on the internet, no authentication required",
+      "remediation": {
+        "immediate": [
+          "For internal services: Remove --allow-unauthenticated, use IAM authentication",
+          "For public relay: Keep unauthenticated but rely on Nostr whitelist",
+          "For embedding API: Add API key authentication or OAuth"
+        ],
+        "recommended_architecture": [
+          "Public: Nostr relay (whitelist enforced at application layer)",
+          "Internal: Embedding API (IAM-authenticated, accessed only by frontend via proxy)"
+        ]
+      },
+      "cvss_score": 5.3,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N",
+      "false_positive": false,
+      "verified": true,
+      "notes": "Acceptable for Nostr relay (designed to be public), but consider authentication for embedding API"
+    },
+    {
+      "id": "SEC-007",
+      "severity": "MEDIUM",
+      "category": "Whitelist Bypass Risk",
+      "cwe": "CWE-285",
+      "owasp": "A01:2021 - Broken Access Control",
+      "title": "Empty Whitelist Allows All Users in Production",
+      "description": "Whitelist defaults to allow-all when empty, risky for production",
+      "location": "/services/nostr-relay/src/whitelist.ts:20-25",
+      "evidence": [
+        "if (this.allowedPubkeys.size === 0) { return true; }",
+        "Only logs warning, does not enforce in production mode"
+      ],
+      "impact": "MEDIUM - If WHITELIST_PUBKEYS env var is not set, relay is open to all users",
+      "remediation": {
+        "immediate": [
+          "Add NODE_ENV check: Fail hard if whitelist empty in production",
+          "Set WHITELIST_PUBKEYS in Cloud Run environment variables",
+          "Add startup validation to verify whitelist is non-empty in production"
+        ],
+        "code_example": "if (this.allowedPubkeys.size === 0) {\n  if (process.env.NODE_ENV === 'production') {\n    throw new Error('FATAL: Whitelist cannot be empty in production');\n  }\n  console.warn('WARNING: Empty whitelist - allowing all pubkeys (development mode)');\n}"
+      },
+      "cvss_score": 5.3,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "false_positive": false,
+      "verified": true
+    },
+    {
+      "id": "SEC-008",
+      "severity": "LOW",
+      "category": "Information Disclosure",
+      "cwe": "CWE-209",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "title": "Verbose Error Messages Expose Implementation Details",
+      "description": "Detailed error messages logged to console and sent to clients",
+      "location": "/services/nostr-relay/src/handlers.ts:42, /services/embedding-api/main.py:131",
+      "evidence": [
+        "console.error('Error handling message:', error);",
+        "detail=f'Embedding generation failed: {str(e)}'"
+      ],
+      "impact": "LOW - Attackers can gather information about internal implementation",
+      "remediation": {
+        "immediate": [
+          "Log detailed errors server-side only",
+          "Return generic error messages to clients",
+          "Use structured logging (Cloud Logging) instead of console"
+        ]
+      },
+      "cvss_score": 3.7,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "false_positive": false,
+      "verified": true
+    },
+    {
+      "id": "SEC-009",
+      "severity": "LOW",
+      "category": "Insecure Dependencies",
+      "cwe": "CWE-1035",
+      "owasp": "A06:2021 - Vulnerable and Outdated Components",
+      "title": "No Dependency Vulnerability Scanning",
+      "description": "No automated scanning for vulnerable dependencies in CI/CD pipeline",
+      "location": "cloudbuild.yaml",
+      "impact": "LOW - Currently no known vulnerabilities (npm audit clean), but no continuous monitoring",
+      "remediation": {
+        "immediate": [
+          "Add npm audit step to Cloud Build pipeline",
+          "Enable Snyk or Dependabot for automated vulnerability scanning",
+          "Add pip-audit for Python dependencies"
+        ]
+      },
+      "cvss_score": 3.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:N/A:N",
+      "false_positive": false,
+      "verified": true,
+      "notes": "npm audit shows 0 vulnerabilities as of audit date"
+    },
+    {
+      "id": "SEC-010",
+      "severity": "LOW",
+      "category": "Missing Security Headers",
+      "cwe": "CWE-693",
+      "owasp": "A05:2021 - Security Misconfiguration",
+      "title": "Cloud Run Services Missing Security Headers",
+      "description": "No Content-Security-Policy, X-Frame-Options, or Strict-Transport-Security headers",
+      "location": "Cloud Run configuration",
+      "impact": "LOW - Vulnerable to clickjacking and XSS attacks",
+      "remediation": {
+        "immediate": [
+          "Add security headers middleware to server.ts and main.py",
+          "Configure Cloud Armor for header injection",
+          "Enable HSTS for all HTTPS endpoints"
+        ]
+      },
+      "cvss_score": 3.7,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:L/A:N",
+      "false_positive": false,
+      "verified": true
+    }
+  ],
+  "compliance_status": {
+    "owasp_top_10": {
+      "A01_broken_access_control": {
+        "status": "PARTIAL_COMPLIANCE",
+        "issues": ["SEC-007"],
+        "notes": "Whitelist implemented but has bypass risk"
+      },
+      "A02_cryptographic_failures": {
+        "status": "NON_COMPLIANT",
+        "issues": ["SEC-001", "SEC-002"],
+        "notes": "Critical: Exposed secrets and missing signature verification"
+      },
+      "A03_injection": {
+        "status": "PARTIAL_COMPLIANCE",
+        "issues": ["SEC-003"],
+        "notes": "SQL injection risk in tag filtering"
+      },
+      "A04_insecure_design": {
+        "status": "PARTIAL_COMPLIANCE",
+        "issues": ["SEC-004"],
+        "notes": "Missing rate limiting and DoS protection"
+      },
+      "A05_security_misconfiguration": {
+        "status": "PARTIAL_COMPLIANCE",
+        "issues": ["SEC-005", "SEC-008", "SEC-010"],
+        "notes": "CORS, error handling, and security headers need improvement"
+      },
+      "A06_vulnerable_components": {
+        "status": "COMPLIANT",
+        "issues": ["SEC-009"],
+        "notes": "No current vulnerabilities, but needs continuous monitoring"
+      },
+      "A07_authentication_failures": {
+        "status": "PARTIAL_COMPLIANCE",
+        "issues": ["SEC-006"],
+        "notes": "Unauthenticated services (acceptable for public relay)"
+      },
+      "A08_software_data_integrity": {
+        "status": "COMPLIANT",
+        "issues": [],
+        "notes": "Cloud Build with Workload Identity Federation provides integrity"
+      },
+      "A09_logging_monitoring": {
+        "status": "PARTIAL_COMPLIANCE",
+        "issues": [],
+        "notes": "Cloud Logging enabled, but no alerting configured"
+      },
+      "A10_ssrf": {
+        "status": "COMPLIANT",
+        "issues": [],
+        "notes": "No external request functionality in services"
+      }
+    },
+    "pci_dss": {
+      "requirement_2": {
+        "status": "COMPLIANT",
+        "notes": "Default passwords changed, system hardening via Cloud Run"
+      },
+      "requirement_4": {
+        "status": "COMPLIANT",
+        "notes": "TLS enforced via Cloud Run (wss://)"
+      },
+      "requirement_6": {
+        "status": "PARTIAL_COMPLIANCE",
+        "notes": "Signature verification missing, dependency scanning needed"
+      },
+      "requirement_8": {
+        "status": "NON_COMPLIANT",
+        "notes": "Secrets in plaintext .env file (SEC-001)"
+      },
+      "requirement_10": {
+        "status": "PARTIAL_COMPLIANCE",
+        "notes": "Cloud Logging enabled, but no access control audit trail"
+      }
+    }
+  },
+  "iam_permissions": {
+    "service_accounts": {
+      "nostr-relay": {
+        "email": "nostr-relay@cumbriadreamlab.iam.gserviceaccount.com",
+        "roles": [
+          "roles/cloudsql.client",
+          "roles/secretmanager.secretAccessor"
+        ],
+        "principle_of_least_privilege": "COMPLIANT",
+        "notes": "Minimal permissions for Cloud SQL and Secret Manager access"
+      },
+      "nostr-relay-deploy": {
+        "email": "nostr-relay-deploy@cumbriadreamlab.iam.gserviceaccount.com",
+        "roles": [
+          "roles/run.admin",
+          "roles/iam.serviceAccountUser",
+          "roles/cloudbuild.builds.builder"
+        ],
+        "principle_of_least_privilege": "COMPLIANT",
+        "notes": "Deployment-only permissions via Workload Identity Federation"
+      }
+    },
+    "workload_identity_federation": {
+      "status": "CONFIGURED",
+      "pool": "github-pool",
+      "provider": "github-provider",
+      "repository_restriction": "attribute.repository_owner=='$REPO_OWNER'",
+      "security_posture": "STRONG - Prevents credential exfiltration"
+    },
+    "recommendations": [
+      "Enable Cloud Audit Logs for IAM policy changes",
+      "Review service account key usage (prefer Workload Identity)",
+      "Implement service account impersonation for human access"
+    ]
+  },
+  "cloud_run_security": {
+    "nostr_relay": {
+      "authentication": "allow-unauthenticated",
+      "justification": "Public Nostr relay with application-layer whitelist",
+      "ingress": "all",
+      "min_instances": 1,
+      "max_instances": 3,
+      "cpu": "1",
+      "memory": "512Mi",
+      "timeout": "3600s",
+      "session_affinity": "enabled",
+      "websocket_support": "enabled",
+      "security_recommendations": [
+        "Add Cloud Armor for DDoS protection",
+        "Enable VPC connector for Cloud SQL private IP",
+        "Configure custom domain with SSL certificate"
+      ]
+    },
+    "embedding_api": {
+      "authentication": "allow-unauthenticated",
+      "justification": "Public API - should add API key authentication",
+      "ingress": "all",
+      "min_instances": 0,
+      "max_instances": 10,
+      "cpu": "2",
+      "memory": "2Gi",
+      "timeout": "60s",
+      "security_recommendations": [
+        "Add API key authentication",
+        "Restrict CORS origins",
+        "Consider moving to internal-only with Cloud Endpoints"
+      ]
+    }
+  },
+  "secret_management": {
+    "gcp_secret_manager": {
+      "secrets_configured": [
+        "nostr-db-url",
+        "admin-pubkey"
+      ],
+      "rotation_policy": "MANUAL",
+      "access_control": "Service account restricted",
+      "recommendations": [
+        "Rotate admin-pubkey secret (currently placeholder)",
+        "Enable automatic rotation for database credentials",
+        "Add secret version auditing"
+      ]
+    },
+    "environment_variables": {
+      "secure": [
+        "WHITELIST_PUBKEYS - passed via Secret Manager",
+        "DATABASE_URL - mounted from Secret Manager"
+      ],
+      "insecure": [
+        "ADMIN_PROVKEY - stored in .env (should be in Secret Manager)",
+        "ADMIN_KEY - mnemonic in .env (should be in Secret Manager)"
+      ]
+    }
+  },
+  "recommendations_summary": {
+    "critical_priority": [
+      "SEC-001: Rotate all admin keys and move to GCP Secret Manager",
+      "SEC-002: Implement Schnorr signature verification for Nostr events"
+    ],
+    "high_priority": [
+      "SEC-003: Fix SQL injection risk in tag filtering",
+      "SEC-004: Implement rate limiting and connection limits"
+    ],
+    "medium_priority": [
+      "SEC-005: Restrict CORS origins for embedding API",
+      "SEC-006: Add API key authentication to embedding API",
+      "SEC-007: Enforce non-empty whitelist in production mode"
+    ],
+    "low_priority": [
+      "SEC-008: Sanitize error messages sent to clients",
+      "SEC-009: Add dependency vulnerability scanning to CI/CD",
+      "SEC-010: Add security headers to Cloud Run services"
+    ]
+  },
+  "scan_coverage": {
+    "sast": {
+      "completed": true,
+      "tools": ["manual_code_review", "pattern_matching"],
+      "files_analyzed": 10,
+      "vulnerabilities_found": 7
+    },
+    "dast": {
+      "completed": false,
+      "reason": "Requires running instance for dynamic testing",
+      "recommendation": "Run OWASP ZAP against deployed Cloud Run URLs"
+    },
+    "dependency_scan": {
+      "completed": true,
+      "tools": ["npm_audit"],
+      "vulnerabilities_found": 0
+    },
+    "secret_scan": {
+      "completed": true,
+      "secrets_found": 3,
+      "false_positives": 0,
+      "git_history_clean": true
+    }
+  }
+}

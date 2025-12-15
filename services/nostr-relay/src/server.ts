@@ -12,9 +12,9 @@ const PORT = parseInt(process.env.PORT || '8080');
 const HOST = process.env.HOST || '0.0.0.0';
 
 // Extend WebSocket to include IP address
-interface ExtendedWebSocket extends WebSocket {
+type ExtendedWebSocket = WebSocket & {
   ip?: string;
-}
+};
 
 class NostrRelay {
   private wss: WebSocketServer;
