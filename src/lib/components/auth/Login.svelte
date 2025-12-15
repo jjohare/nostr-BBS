@@ -74,7 +74,7 @@
   }
 </script>
 
-<div class="flex flex-col items-center justify-center min-h-screen p-4 bg-base-200">
+<div class="flex flex-col items-center justify-center min-h-screen p-4 bg-base-200 gradient-mesh">
   <div class="card w-full max-w-2xl bg-base-100 shadow-xl">
     <div class="card-body">
       <div class="flex items-center justify-center gap-2 mb-4">

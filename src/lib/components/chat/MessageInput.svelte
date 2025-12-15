@@ -51,6 +51,16 @@
     // Save draft on beforeunload
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', handleBeforeUnload);
+
+      // iOS keyboard handling
+      if (window.visualViewport) {
+        const handleViewportResize = () => {
+          if (textareaElement === document.activeElement) {
+            keyboardHeight = window.innerHeight - window.visualViewport!.height;
+          }
+        };
+        window.visualViewport.addEventListener('resize', handleViewportResize);
+      }
     }
   });
 
@@ -127,6 +137,9 @@
     saveDraftImmediately();
   }
 
+  let isKeyboardVisible = false;
+  let keyboardHeight = 0;
+
   async function handleKeyDown(event: KeyboardEvent) {
     // Let MentionAutocomplete handle navigation keys when visible
     if (showMentionAutocomplete && ['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(event.key)) {
@@ -137,6 +150,29 @@
       event.preventDefault();
       await sendMessage();
     }
+  }
+
+  function handleFocus() {
+    isKeyboardVisible = true;
+
+    // iOS viewport adjustment
+    if (typeof window !== 'undefined' && window.visualViewport) {
+      const viewport = window.visualViewport;
+      keyboardHeight = window.innerHeight - viewport.height;
+
+      // Scroll to textarea when keyboard opens
+      setTimeout(() => {
+        if (textareaElement) {
+          textareaElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    }
+  }
+
+  function handleBlurExtended() {
+    isKeyboardVisible = false;
+    keyboardHeight = 0;
+    handleBlur();
   }
 
   async function sendMessage() {
@@ -313,22 +349,25 @@
     on:cancel={handleMentionCancel}
   />
 
-  <div class="flex gap-2 items-end">
-    <div class="flex-1">
+  <div class="flex gap-2 items-end message-input-toolbar">
+    <div class="flex-1 textarea-wrapper">
       <textarea
         bind:this={textareaElement}
         bind:value={messageText}
         on:keydown={handleKeyDown}
         on:input={handleInput}
-        on:blur={handleBlur}
+        on:focus={handleFocus}
+        on:blur={handleBlurExtended}
         placeholder={placeholder}
         disabled={!canSend || isSending}
         rows="1"
         class="textarea textarea-bordered w-full resize-none min-h-[2.75rem] max-h-32 disabled:bg-base-200 disabled:text-base-content/50 mobile-input"
+        class:keyboard-visible={isKeyboardVisible}
         style="overflow-y: auto;"
       ></textarea>
-      <div class="text-xs text-base-content/60 mt-1 px-1 flex items-center gap-2">
+      <div class="text-xs text-base-content/60 mt-1 px-1 flex items-center gap-2 flex-wrap">
         <span class="hidden sm:inline">Press Enter to send, Shift+Enter for new line</span>
+        <span class="sm:hidden text-xs">Tap send button or Enter</span>
         {#if hasDraft && messageText.trim()}
           <span class="badge badge-xs badge-warning gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
@@ -341,10 +380,11 @@
     </div>
 
     <button
-      class="btn btn-primary btn-square min-h-11 min-w-11"
+      class="btn btn-primary btn-square min-h-11 min-w-11 send-button"
       on:click={sendMessage}
       disabled={!messageText.trim() || !canSend || isSending}
       aria-label="Send message"
+      title="Send message"
     >
       {#if isSending}
         <span class="loading loading-spinner loading-sm"></span>
@@ -367,6 +407,7 @@
 <style>
   .message-input-container {
     position: relative;
+    transition: padding-bottom 0.3s ease-out;
   }
 
   /* iOS keyboard handling */
@@ -379,11 +420,68 @@
   /* Prevent iOS zoom on input focus - 16px minimum */
   .mobile-input {
     font-size: 16px;
+    transition: all 0.2s ease-out;
   }
 
   @media (min-width: 640px) {
     .mobile-input {
       font-size: 0.875rem;
+    }
+  }
+
+  /* Auto-resize textarea */
+  .textarea-wrapper {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Ensure send button is properly sized for touch */
+  .send-button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    flex-shrink: 0;
+  }
+
+  /* Mobile toolbar spacing */
+  .message-input-toolbar {
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 640px) {
+    .message-input-toolbar {
+      align-items: flex-end;
+    }
+
+    .send-button {
+      margin-bottom: 1.75rem; /* Align with textarea bottom */
+    }
+  }
+
+  /* iOS viewport adjustment when keyboard is visible */
+  @supports (-webkit-touch-callout: none) {
+    .keyboard-visible {
+      /* Smooth transition when keyboard appears */
+      transition: transform 0.3s ease-out;
+    }
+  }
+
+  /* Enhanced focus state for mobile */
+  .mobile-input:focus {
+    border-color: oklch(var(--p));
+    box-shadow: 0 0 0 3px oklch(var(--p) / 0.2);
+    outline: none;
+  }
+
+  /* Better touch feedback */
+  .mobile-input:active {
+    transform: scale(0.995);
+  }
+
+  /* Optimize for notched devices */
+  @supports (padding: max(0px)) {
+    .message-input-container {
+      padding-left: max(1rem, env(safe-area-inset-left));
+      padding-right: max(1rem, env(safe-area-inset-right));
     }
   }
 </style>

@@ -38,6 +38,7 @@
     "bip39": "^3.1.0",
     "dexie": "^4.0.8",
     "hnswlib-wasm": "^0.8.2",
+    "lucide-svelte": "^0.561.0",
     "nostr-tools": "^2.19.3"
   },
   "devDependencies": {

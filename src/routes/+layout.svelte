@@ -24,6 +24,7 @@
 	import SessionTimeoutWarning from '$lib/components/ui/SessionTimeoutWarning.svelte';
 	import Navigation from '$lib/components/ui/Navigation.svelte';
 	import MyProfileModal from '$lib/components/user/MyProfileModal.svelte';
+	import ScreenReaderAnnouncer from '$lib/components/ui/ScreenReaderAnnouncer.svelte';
 
 	let mounted = false;
 	let themePreference: 'dark' | 'light' = 'dark';
@@ -117,35 +118,38 @@
 	<title>Minimoomaa Noir</title>
 </svelte:head>
 
+<!-- Skip to main content link for accessibility -->
+<a href="#main-content" class="skip-to-main">Skip to main content</a>
+
 <!-- PWA Install Banner -->
 {#if showInstallBanner}
-	<div class="alert alert-info fixed top-0 left-0 right-0 z-50 rounded-none">
-		<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+	<div class="alert alert-info fixed top-0 left-0 right-0 z-50 rounded-none" role="banner" aria-live="polite">
+		<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6" aria-hidden="true">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
 		</svg>
 		<span>Install Minimoomaa Noir for offline access</span>
 		<div class="flex gap-2">
-			<button class="btn btn-sm btn-primary" on:click={handleInstall}>Install</button>
-			<button class="btn btn-sm btn-ghost" on:click={dismissInstallBanner}>Dismiss</button>
+			<button class="btn btn-sm btn-primary" on:click={handleInstall} aria-label="Install application">Install</button>
+			<button class="btn btn-sm btn-ghost" on:click={dismissInstallBanner} aria-label="Dismiss install banner">Dismiss</button>
 		</div>
 	</div>
 {/if}
 
 <!-- PWA Update Banner -->
 {#if showUpdateBanner}
-	<div class="alert alert-warning fixed top-0 left-0 right-0 z-50 rounded-none">
-		<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+	<div class="alert alert-warning fixed top-0 left-0 right-0 z-50 rounded-none" role="banner" aria-live="polite">
+		<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6" aria-hidden="true">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
 		</svg>
 		<span>A new version is available</span>
-		<button class="btn btn-sm btn-warning" on:click={handleUpdate}>Update Now</button>
+		<button class="btn btn-sm btn-warning" on:click={handleUpdate} aria-label="Update application now">Update Now</button>
 	</div>
 {/if}
 
 <!-- Offline Indicator -->
 {#if !$isOnline}
-	<div class="alert alert-error fixed bottom-0 left-0 right-0 z-50 rounded-none">
-		<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+	<div class="alert alert-error fixed bottom-0 left-0 right-0 z-50 rounded-none" role="status" aria-live="assertive">
+		<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6" aria-hidden="true">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
 		</svg>
 		<span>
@@ -170,13 +174,14 @@
 			/>
 		{/if}
 		{#key $page.url.pathname}
-			<main role="main" in:fade={{ duration: 150, delay: 75 }} out:fade={{ duration: 75 }}>
+			<main id="main-content" role="main" tabindex="-1" in:fade={{ duration: 150, delay: 75 }} out:fade={{ duration: 75 }}>
 				<slot />
 			</main>
 		{/key}
 	{:else}
-		<div class="flex items-center justify-center min-h-screen">
+		<div class="flex items-center justify-center min-h-screen" role="status" aria-live="polite" aria-label="Loading application">
 			<div class="loading loading-spinner loading-lg text-primary"></div>
+			<span class="sr-only">Loading application...</span>
 		</div>
 	{/if}
 </div>
@@ -184,9 +189,50 @@
 <Toast />
 <ConfirmDialog />
 <SessionTimeoutWarning />
+<ScreenReaderAnnouncer />
 
 <style>
 	:global(body) {
 		overscroll-behavior: none;
+	}
+
+	/* Skip to main content link */
+	.skip-to-main {
+		position: absolute;
+		top: -40px;
+		left: 0;
+		background: #667eea;
+		color: white;
+		padding: 8px 16px;
+		text-decoration: none;
+		z-index: 100;
+		border-radius: 0 0 4px 0;
+		font-weight: 500;
+	}
+
+	.skip-to-main:focus {
+		top: 0;
+		outline: 3px solid #fbbf24;
+		outline-offset: 2px;
+	}
+
+	/* Screen reader only content */
+	:global(.sr-only) {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border-width: 0;
+	}
+
+	/* Focus visible styles */
+	:global(*:focus-visible) {
+		outline: 2px solid #667eea;
+		outline-offset: 2px;
+		border-radius: 2px;
 	}
 </style>

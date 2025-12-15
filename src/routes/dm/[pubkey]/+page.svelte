@@ -5,6 +5,7 @@
   import { base } from '$app/paths';
   import { authStore } from '$lib/stores/auth';
   import { dmStore } from '$lib/stores/dm';
+  import { toast } from '$lib/stores/toast';
   import { hexToBytes } from '@noble/hashes/utils.js';
 
   $: recipientPubkey = $page.params.pubkey;
@@ -74,10 +75,24 @@
       };
 
       await dmStore.sendDM(content, dummyRelay, privkeyBytes);
+      toast.messageSent();
     } catch (error) {
       console.error('Error sending DM:', error);
       messageInput = content;
-      alert('Failed to send message. Please try again.');
+
+      // Determine error type and show appropriate toast
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      if (errorMessage.includes('network') || errorMessage.includes('connection')) {
+        toast.networkError(sendMessage);
+      } else if (errorMessage.includes('auth') || errorMessage.includes('session')) {
+        toast.authError();
+      } else {
+        toast.error('Failed to send message. Please try again.', 7000, {
+          label: 'Retry',
+          callback: sendMessage
+        });
+      }
     } finally {
       sending = false;
     }
