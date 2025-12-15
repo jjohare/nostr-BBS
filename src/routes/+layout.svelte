@@ -189,7 +189,6 @@
 <Toast />
 <ConfirmDialog />
 <SessionTimeoutWarning />
-<ScreenReaderAnnouncer />
 
 <style>
 	:global(body) {
