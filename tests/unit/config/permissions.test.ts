@@ -110,20 +110,24 @@ describe('Permissions', () => {
 		});
 
 		it('should grant access when user has section role', () => {
+			// Use an actual section from the config
+			const sections = getSections();
+			const firstSection = sections[0];
+
 			const permissions: UserPermissions = {
 				pubkey: 'test',
 				globalRole: 'guest',
 				cohorts: [],
 				sectionRoles: [
 					{
-						sectionId: 'test-section',
+						sectionId: firstSection.id,
 						role: 'member',
 						assignedAt: Date.now()
 					}
 				]
 			};
 
-			expect(canAccessSection(permissions, 'test-section')).toBe(true);
+			expect(canAccessSection(permissions, firstSection.id)).toBe(true);
 		});
 
 		it('should deny access when section requires approval and user has no role', () => {
