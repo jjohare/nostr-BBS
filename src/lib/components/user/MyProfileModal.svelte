@@ -2,7 +2,7 @@
 	import { authStore } from '$lib/stores/auth';
 	import { profileCache } from '$lib/stores/profiles';
 	import { encodePubkey, encodePrivkey } from '$lib/nostr/keys';
-	import { ndkStore } from '$lib/stores/ndk';
+	import { ndk, connectNDK, setSigner, hasSigner } from '$lib/nostr/ndk';
 	import { NDKEvent } from '@nostr-dev-kit/ndk';
 
 	export let open = false;
@@ -67,24 +67,8 @@
 	}
 
 	async function saveProfile() {
-		if (!$authStore.publicKey) {
+		if (!$authStore.publicKey || !$authStore.privateKey) {
 			profileError = 'Not authenticated';
-			return;
-		}
-
-		// Get NDK from store - may need to init if not already
-		let ndk = ndkStore.get();
-		if (!ndk) {
-			// Try to initialize NDK
-			try {
-				ndk = await ndkStore.init();
-			} catch (e) {
-				console.error('Failed to init NDK:', e);
-			}
-		}
-
-		if (!ndk) {
-			profileError = 'Not connected to relay. Please refresh the page.';
 			return;
 		}
 
@@ -92,6 +76,14 @@
 		profileError = null;
 
 		try {
+			// Connect NDK if not already connected
+			await connectNDK();
+
+			// Set signer from private key if not already set
+			if (!hasSigner()) {
+				setSigner($authStore.privateKey);
+			}
+
 			// Create kind 0 metadata event
 			const metadataEvent = new NDKEvent(ndk);
 			metadataEvent.kind = 0;
