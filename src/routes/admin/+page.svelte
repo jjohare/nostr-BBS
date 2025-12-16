@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
   import { authStore } from '$lib/stores/auth';
@@ -8,7 +8,19 @@
   import { setSigner, connectNDK, getRelayUrls, reconnectNDK } from '$lib/nostr/ndk';
   import { createChannel, fetchChannels, type CreatedChannel } from '$lib/nostr/channels';
   import { settingsStore } from '$lib/stores/settings';
-  import { SECTION_CONFIG, type ChannelSection } from '$lib/types/channel';
+  import { SECTION_CONFIG, type ChannelSection, type SectionAccessRequest } from '$lib/types/channel';
+  import { sectionStore, pendingRequestCount } from '$lib/stores/sections';
+  import { subscribeAccessRequests, approveSectionAccess } from '$lib/nostr/sections';
+  import type { NDKSubscription } from '@nostr-dev-kit/ndk';
+  import UserDisplay from '$lib/components/user/UserDisplay.svelte';
+
+  // Active view for admin tabs
+  type AdminView = 'dashboard' | 'users' | 'requests' | 'settings';
+  let activeView: AdminView = 'dashboard';
+
+  // Pending section access requests
+  let pendingRequests: SectionAccessRequest[] = [];
+  let requestSubscription: NDKSubscription | null = null;
 
   let stats = {
     totalUsers: 0,
@@ -16,6 +28,9 @@
     totalMessages: 0,
     pendingApprovals: 0
   };
+
+  // Reactive update of pending approvals count
+  $: stats.pendingApprovals = pendingRequests.length;
 
   let channels: CreatedChannel[] = [];
   let isLoading = false;
@@ -72,12 +87,75 @@
       channels = await fetchChannels();
       stats.totalChannels = channels.length;
 
+      // Fetch pending section access requests
+      await loadPendingRequests();
+
+      // Subscribe to new incoming requests
+      requestSubscription = subscribeAccessRequests((request) => {
+        // Add to pending list if not already present
+        if (!pendingRequests.find(r => r.id === request.id)) {
+          pendingRequests = [request, ...pendingRequests];
+        }
+      });
+
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to initialize admin';
       relayStatus = 'error';
     } finally {
       isLoading = false;
     }
+  }
+
+  async function loadPendingRequests() {
+    try {
+      const { fetchPendingRequests } = await import('$lib/nostr/sections');
+      pendingRequests = await fetchPendingRequests();
+    } catch (e) {
+      console.error('Failed to load pending requests:', e);
+    }
+  }
+
+  async function handleApproveRequest(request: SectionAccessRequest) {
+    try {
+      isLoading = true;
+      const result = await approveSectionAccess(request);
+      if (result.success) {
+        // Remove from pending list
+        pendingRequests = pendingRequests.filter(r => r.id !== request.id);
+      } else {
+        error = result.error || 'Failed to approve request';
+      }
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Failed to approve request';
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  async function handleDenyRequest(request: SectionAccessRequest) {
+    try {
+      isLoading = true;
+      await sectionStore.denyRequest(request, 'Access denied by admin');
+      pendingRequests = pendingRequests.filter(r => r.id !== request.id);
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Failed to deny request';
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  function formatRelativeTime(timestamp: number): string {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return 'just now';
   }
 
   async function handleCreateChannel() {
@@ -158,6 +236,14 @@
     } catch (e) {
       error = 'Failed to verify admin status';
       setTimeout(() => goto(`${base}/chat`), 2000);
+    }
+  });
+
+  onDestroy(() => {
+    // Clean up subscription when leaving admin page
+    if (requestSubscription) {
+      requestSubscription.stop();
+      requestSubscription = null;
     }
   });
 </script>
@@ -436,35 +522,144 @@
     </div>
   </div>
 
+  <!-- Pending Section Access Requests -->
+  <div class="card bg-base-200 mb-6">
+    <div class="card-body">
+      <div class="flex items-center justify-between">
+        <h2 class="card-title">
+          Pending Access Requests
+          {#if pendingRequests.length > 0}
+            <span class="badge badge-warning">{pendingRequests.length}</span>
+          {/if}
+        </h2>
+        <button
+          class="btn btn-ghost btn-sm"
+          on:click={loadPendingRequests}
+          disabled={isLoading}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
+        </button>
+      </div>
+
+      {#if isLoading && pendingRequests.length === 0}
+        <div class="text-center py-8">
+          <span class="loading loading-spinner loading-lg"></span>
+          <p class="mt-2 text-base-content/70">Loading pending requests...</p>
+        </div>
+      {:else if pendingRequests.length === 0}
+        <div class="text-center py-8 text-base-content/50">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p>No pending access requests</p>
+          <p class="text-sm mt-1">New users requesting section access will appear here</p>
+        </div>
+      {:else}
+        <div class="overflow-x-auto mt-4">
+          <table class="table table-zebra">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Section</th>
+                <th>Message</th>
+                <th>Requested</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each pendingRequests as request (request.id)}
+                <tr>
+                  <td>
+                    <UserDisplay
+                      pubkey={request.requesterPubkey}
+                      showAvatar={true}
+                      showName={true}
+                      avatarSize="sm"
+                      clickable={false}
+                    />
+                  </td>
+                  <td>
+                    <span class="badge badge-primary">
+                      {SECTION_CONFIG[request.section]?.icon || ''} {SECTION_CONFIG[request.section]?.name || request.section}
+                    </span>
+                  </td>
+                  <td>
+                    {#if request.message}
+                      <span class="text-sm text-base-content/70 line-clamp-2">{request.message}</span>
+                    {:else}
+                      <span class="text-xs text-base-content/50">No message</span>
+                    {/if}
+                  </td>
+                  <td>
+                    <span class="text-sm">{formatRelativeTime(request.requestedAt)}</span>
+                  </td>
+                  <td>
+                    <div class="flex justify-end gap-2">
+                      <button
+                        class="btn btn-success btn-sm"
+                        on:click={() => handleApproveRequest(request)}
+                        disabled={isLoading}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        class="btn btn-error btn-sm btn-outline"
+                        on:click={() => handleDenyRequest(request)}
+                        disabled={isLoading}
+                      >
+                        Deny
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+    </div>
+  </div>
+
   <!-- Quick Actions -->
   <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-    <div class="card bg-base-200">
+    <a href="{base}/admin/stats" class="card bg-base-200 hover:bg-base-300 transition-colors cursor-pointer">
       <div class="card-body">
-        <h2 class="card-title">User Management</h2>
-        <p class="text-sm text-base-content/70">Manage user approvals and permissions</p>
-        <div class="card-actions justify-end mt-4">
-          <button class="btn btn-primary btn-sm">View Users</button>
-        </div>
+        <h2 class="card-title">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          Statistics
+        </h2>
+        <p class="text-sm text-base-content/70">View detailed system analytics and reports</p>
       </div>
-    </div>
+    </a>
+
+    <a href="{base}/admin/calendar" class="card bg-base-200 hover:bg-base-300 transition-colors cursor-pointer">
+      <div class="card-body">
+        <h2 class="card-title">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          Calendar Events
+        </h2>
+        <p class="text-sm text-base-content/70">Manage NIP-52 calendar events and scheduling</p>
+      </div>
+    </a>
 
     <div class="card bg-base-200">
       <div class="card-body">
-        <h2 class="card-title">Pending Approvals</h2>
-        <p class="text-sm text-base-content/70">Review and approve join requests</p>
-        <div class="card-actions justify-end mt-4">
-          <button class="btn btn-primary btn-sm">View Requests</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card bg-base-200">
-      <div class="card-body">
-        <h2 class="card-title">System Settings</h2>
-        <p class="text-sm text-base-content/70">Configure relay settings and policies</p>
-        <div class="card-actions justify-end mt-4">
-          <button class="btn btn-primary btn-sm">Settings</button>
-        </div>
+        <h2 class="card-title">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          System Settings
+        </h2>
+        <p class="text-sm text-base-content/70">Configure relay settings, cohorts, and policies</p>
+        <div class="text-xs text-base-content/40 mt-2">Coming soon</div>
       </div>
     </div>
   </div>
