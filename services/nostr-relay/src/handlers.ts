@@ -3,7 +3,7 @@ import { Database, NostrEvent } from './db';
 import { Whitelist } from './whitelist';
 import { RateLimiter } from './rateLimit';
 import crypto from 'crypto';
-import { schnorr } from '@noble/secp256k1';
+import { schnorr } from '@noble/curves/secp256k1';
 
 // Extend WebSocket to include IP address
 interface ExtendedWebSocket extends WebSocket {
