@@ -117,9 +117,9 @@ export const safeStorage = {
 };
 
 const STORAGE_KEYS = {
-  PUBKEY: 'minimoonoir_nostr_pubkey',
-  ENCRYPTED_PRIVKEY: 'minimoonoir_nostr_encrypted_privkey',
-  MNEMONIC_SHOWN: 'minimoonoir_nostr_mnemonic_shown'
+  PUBKEY: 'nostr_bbs_nostr_pubkey',
+  ENCRYPTED_PRIVKEY: 'nostr_bbs_nostr_encrypted_privkey',
+  MNEMONIC_SHOWN: 'nostr_bbs_nostr_mnemonic_shown'
 } as const;
 
 export interface StoredKeys {

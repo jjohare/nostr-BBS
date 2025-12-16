@@ -199,9 +199,9 @@ function buildChannelFromEvents(
     return requestChannelId === groupId;
   });
 
-  // Extract section tag (default to fairfield-guests)
+  // Extract section tag (default to public-lobby)
   const sectionTag = metaEvent.tags.find(t => t[0] === 'section')?.[1];
-  const section = (sectionTag as ChannelSection) || 'fairfield-guests';
+  const section = (sectionTag as ChannelSection) || 'public-lobby';
 
   // Extract visibility setting (default to public)
   const visibilityTag = metaEvent.tags.find(t => t[0] === 'visibility')?.[1];
@@ -303,24 +303,24 @@ let _minimoonoirChannels: ReturnType<typeof derived<typeof channelStore, Channel
 let _dreamlabChannels: ReturnType<typeof derived<typeof channelStore, Channel[]>> | null = null;
 
 /**
- * Get channels for fairfield-guests section (lazy initialization)
+ * Get channels for public-lobby section (lazy initialization)
  */
 export function getFairfieldGuestChannels() {
   if (!_fairfieldGuestChannels) {
     _fairfieldGuestChannels = derived(channelStore, $store =>
-      $store.channels.filter(c => c.section === 'fairfield-guests')
+      $store.channels.filter(c => c.section === 'public-lobby')
     );
   }
   return _fairfieldGuestChannels;
 }
 
 /**
- * Get channels for minimoonoir-rooms section (lazy initialization)
+ * Get channels for community-rooms section (lazy initialization)
  */
 export function getMinimoonoirChannels() {
   if (!_minimoonoirChannels) {
     _minimoonoirChannels = derived(channelStore, $store =>
-      $store.channels.filter(c => c.section === 'minimoonoir-rooms')
+      $store.channels.filter(c => c.section === 'community-rooms')
     );
   }
   return _minimoonoirChannels;

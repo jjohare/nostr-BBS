@@ -10,7 +10,7 @@
   $: isApproved = accessStatus === 'approved';
   $: isPending = accessStatus === 'pending';
   $: needsApproval = config.requiresApproval && !isApproved && !isPending;
-  $: hasCalendarAccess = section === 'fairfield-guests' || (isApproved && config.calendarAccess !== 'none');
+  $: hasCalendarAccess = section === 'public-lobby' || (isApproved && config.calendarAccess !== 'none');
 
   function formatLastActivity(timestamp: number): string {
     const now = Date.now();

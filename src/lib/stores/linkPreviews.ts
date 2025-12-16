@@ -23,7 +23,7 @@ interface PreviewCache {
 	};
 }
 
-const CACHE_KEY = 'minimoonoir-link-previews';
+const CACHE_KEY = 'nostr_bbs_link_previews';
 const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 const MAX_CACHE_SIZE = 100;
 
@@ -39,8 +39,9 @@ function loadCache(): PreviewCache {
 		// Filter expired entries
 		const filtered: PreviewCache = {};
 		for (const [url, entry] of Object.entries(parsed)) {
-			if (now - (entry as any).timestamp < CACHE_DURATION) {
-				filtered[url] = entry as any;
+			const cacheEntry = entry as PreviewCache[string];
+			if (now - cacheEntry.timestamp < CACHE_DURATION) {
+				filtered[url] = cacheEntry;
 			}
 		}
 
@@ -218,10 +219,10 @@ function decodeHtmlEntities(text: string): string {
 		'&mdash;': '—',
 		'&ndash;': '–',
 		'&hellip;': '…',
-		'&lsquo;': ''',
-		'&rsquo;': ''',
-		'&ldquo;': '"',
-		'&rdquo;': '"',
+		'&lsquo;': '\u2018',
+		'&rsquo;': '\u2019',
+		'&ldquo;': '\u201C',
+		'&rdquo;': '\u201D',
 	};
 
 	// Replace named entities

@@ -38,7 +38,7 @@ const KIND_GIFT_WRAP = 1059;  // NIP-17 gift-wrapped DM (preferred)
  *   kind: 9022,
  *   content: optional message,
  *   tags: [
- *     ['section', 'minimoonoir-rooms'],
+ *     ['section', 'community-rooms'],
  *     ['p', adminPubkey]  // Notify admin(s)
  *   ]
  * }
@@ -51,8 +51,8 @@ export async function requestSectionAccess(
     return { success: false, error: 'Not in browser' };
   }
 
-  // Don't allow requests for fairfield-guests (auto-approved)
-  if (section === 'fairfield-guests') {
+  // Don't allow requests for public-lobby (auto-approved)
+  if (section === 'public-lobby') {
     return { success: false, error: 'This section does not require approval' };
   }
 
@@ -302,8 +302,8 @@ export async function fetchUserAccess(
     const events = await ndk.fetchEvents(filter);
     const access: UserSectionAccess[] = [];
 
-    // fairfield-guests is always approved
-    access.push({ section: 'fairfield-guests', status: 'approved' });
+    // public-lobby is always approved
+    access.push({ section: 'public-lobby', status: 'approved' });
 
     for (const event of events) {
       const sectionTag = event.tags.find(t => t[0] === 'section')?.[1];

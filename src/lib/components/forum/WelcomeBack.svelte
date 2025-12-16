@@ -5,7 +5,7 @@
 
   let lastVisit: Date | null = null;
 
-  const LAST_VISIT_KEY = 'minimoomaa_last_visit';
+  const LAST_VISIT_KEY = 'nostr_bbs_last_visit';
 
   // Use authStore nickname directly (reactive)
   $: displayName = $authStore.nickname || '';

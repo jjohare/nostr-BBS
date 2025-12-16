@@ -1,6 +1,6 @@
-# Minimoonoir
+# Nostr BBS
 
-A privacy-first community messaging platform built on the Nostr protocol. Features NIP-52 calendar events, NIP-28 public chat channels, NIP-17/59 encrypted direct messages, and cohort-based access control. Fully serverless architecture with SvelteKit PWA on GitHub Pages and Google Cloud Platform backend.
+A decentralized community bulletin board system built on the Nostr protocol. Features NIP-52 calendar events, NIP-28 public chat channels, NIP-17/59 encrypted direct messages, and cohort-based access control. Fully serverless architecture with SvelteKit PWA on GitHub Pages and Google Cloud Platform backend.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Nostr](https://img.shields.io/badge/Nostr-Protocol-purple.svg)](https://nostr.com)
@@ -1212,42 +1212,61 @@ await sendChannelMessage(channelId, 'Hello channel!');
 
 MIT License - see [LICENSE](LICENSE) for details.
 
-## Acknowledgments
+## Credits and Attribution
 
-### Core Technologies
+This project builds upon exceptional open-source work from the Nostr ecosystem and broader web development community.
 
-- [Nostr Protocol](https://nostr.com) - Decentralized social protocol specification
-- [NDK](https://github.com/nostr-dev-kit/ndk) - Nostr Development Kit by @pablof7z
-- [SvelteKit](https://kit.svelte.dev) - Web application framework
-- [Tailwind CSS](https://tailwindcss.com) - Utility-first CSS framework
+### Core Nostr Technologies
 
-### Infrastructure
+- **[Nostr Protocol](https://github.com/nostr-protocol/nostr)** - The foundation protocol enabling decentralized, censorship-resistant communication
+- **[NDK (Nostr Dev Kit)](https://github.com/nostr-dev-kit/ndk)** - Comprehensive Nostr development toolkit by Pablo Fernandez ([@pablof7z](https://github.com/pablof7z))
+- **[nostr-tools](https://github.com/nbd-wtf/nostr-tools)** - Essential Nostr utilities by fiatjaf
 
-- [Google Cloud Run](https://cloud.google.com/run) - Serverless container platform
-- [Google Cloud Storage](https://cloud.google.com/storage) - Object storage for vector embeddings
-- [Google Firestore](https://cloud.google.com/firestore) - NoSQL metadata database
-- [Google Cloud Build](https://cloud.google.com/build) - CI/CD pipeline
-- [GitHub Pages](https://pages.github.com) - Static site hosting
-- [GitHub Actions](https://github.com/features/actions) - Frontend deployment automation
+### Frontend Framework & UI
 
-### Machine Learning
+- **[SvelteKit](https://kit.svelte.dev)** - Application framework by the Svelte team
+- **[DaisyUI](https://daisyui.com)** - Beautiful component library by Pouya Saadeghi
+- **[TailwindCSS](https://tailwindcss.com)** - Utility-first CSS framework
+- **[Dexie.js](https://dexie.org)** - IndexedDB wrapper by David Fahlander
 
-- [sentence-transformers](https://www.sbert.net/) - Multilingual sentence embeddings
-- [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) - Compact 384d embedding model
-- [hnswlib](https://github.com/nmslib/hnswlib) - Fast approximate nearest neighbor search
-- [hnswlib-wasm](https://github.com/nicholascannon/hnswlib-wasm) - Browser-native HNSW via WebAssembly
+### Machine Learning & Search
 
-### Development Tools
+- **[Transformers.js](https://huggingface.co/docs/transformers.js)** - Machine learning models by Hugging Face
+- **[sentence-transformers](https://www.sbert.net/)** - Multilingual sentence embeddings
+- **[all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)** - Compact 384d embedding model
+- **[hnswlib](https://github.com/nmslib/hnswlib)** - Fast approximate nearest neighbor search
+- **[hnswlib-wasm](https://github.com/yoshoku/hnswlib-wasm)** - WASM-based vector similarity search
 
-- [Agentic QE Fleet](https://github.com/proffesor-for-testing/agentic-qe) - AI-powered quality engineering agents (31 QE agents, 53 QE skills)
-- [Claude Code](https://claude.ai/claude-code) - AI-assisted development by Anthropic
-- [Claude Flow](https://github.com/ruvnet/claude-flow) - Swarm coordination for parallel development
-- [ruv-swarm](https://github.com/ruv/ruv-swarm) - Multi-agent orchestration
+### Infrastructure & Cloud Services
+
+- **[Google Cloud Run](https://cloud.google.com/run)** - Serverless container platform
+- **[Google Cloud Storage](https://cloud.google.com/storage)** - Object storage for vector embeddings
+- **[Google Firestore](https://cloud.google.com/firestore)** - NoSQL metadata database
+- **[Google Cloud Build](https://cloud.google.com/build)** - CI/CD pipeline
+- **[GitHub Pages](https://pages.github.com)** - Static site hosting
+- **[GitHub Actions](https://github.com/features/actions)** - Frontend deployment automation
+
+### Development & Quality Engineering Tools
+
+- **[Agentic QE Fleet](https://github.com/proffesor-for-testing/agentic-qe)** - AI-powered quality engineering agents (31 QE agents, 53 QE skills)
+- **[Claude Code](https://claude.ai/claude-code)** - AI-assisted development by Anthropic
+- **[Claude Flow](https://github.com/ruvnet/claude-flow)** - Swarm coordination for parallel development
+- **[ruv-swarm](https://github.com/ruv/ruv-swarm)** - Multi-agent orchestration
 
 ### NIPs Implemented
 
 Special thanks to the Nostr community for the NIP specifications:
-- NIP-01, NIP-02, NIP-09, NIP-11, NIP-17, NIP-25, NIP-28, NIP-42, NIP-44, NIP-52, NIP-59
+- **[NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md)** - Basic Protocol
+- **[NIP-02](https://github.com/nostr-protocol/nips/blob/master/02.md)** - Contact List
+- **[NIP-09](https://github.com/nostr-protocol/nips/blob/master/09.md)** - Event Deletion
+- **[NIP-11](https://github.com/nostr-protocol/nips/blob/master/11.md)** - Relay Information
+- **[NIP-17](https://github.com/nostr-protocol/nips/blob/master/17.md)** - Private DMs
+- **[NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md)** - Reactions
+- **[NIP-28](https://github.com/nostr-protocol/nips/blob/master/28.md)** - Public Chat
+- **[NIP-42](https://github.com/nostr-protocol/nips/blob/master/42.md)** - Authentication
+- **[NIP-44](https://github.com/nostr-protocol/nips/blob/master/44.md)** - Versioned Encryption
+- **[NIP-52](https://github.com/nostr-protocol/nips/blob/master/52.md)** - Calendar Events
+- **[NIP-59](https://github.com/nostr-protocol/nips/blob/master/59.md)** - Gift Wrap
 
 ### Contributors
 

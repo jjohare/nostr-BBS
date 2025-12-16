@@ -298,14 +298,18 @@ export async function fetchAllChannels(relay: NDKRelay): Promise<void> {
         const encryptedTag = event.tags.find(t => t[0] === 'encrypted');
         const sectionTag = event.tags.find(t => t[0] === 'section');
 
+        const visibility = visibilityTag?.[1] === 'cohort' || visibilityTag?.[1] === 'private'
+          ? visibilityTag[1] as 'cohort' | 'private'
+          : 'public';
+
         channelMap.set(event.id, {
           id: event.id,
           name: metadata.name || 'Unnamed Channel',
           description: metadata.about || metadata.description,
           cohorts: cohortTag?.[1]?.split(',') || [],
-          visibility: (visibilityTag?.[1] as any) || 'public',
+          visibility,
           encrypted: encryptedTag?.[1] === 'true',
-          section: (sectionTag?.[1] as ChannelSection) || 'fairfield-guests',
+          section: (sectionTag?.[1] as ChannelSection) || 'public-lobby',
           createdAt: event.created_at,
           memberCount: 0,
           creatorPubkey: event.pubkey,

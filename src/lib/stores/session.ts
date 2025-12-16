@@ -13,7 +13,7 @@ const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes of inactivity
 const WARNING_BEFORE_MS = 2 * 60 * 1000; // Show warning 2 minutes before timeout
 const CHECK_INTERVAL_MS = 30 * 1000; // Check every 30 seconds
 
-const LAST_ACTIVITY_KEY = 'minimoonoir_last_activity';
+const LAST_ACTIVITY_KEY = 'nostr_bbs_last_activity';
 
 interface SessionState {
   isActive: boolean;

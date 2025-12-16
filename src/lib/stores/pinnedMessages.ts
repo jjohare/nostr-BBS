@@ -48,7 +48,7 @@ function createPinnedStore() {
     },
 
     fetchPinnedMessages: async (channelId: string) => {
-        const $ndk = get(ndk);
+        const $ndk = ndk;
         if (!$ndk) return;
 
         try {

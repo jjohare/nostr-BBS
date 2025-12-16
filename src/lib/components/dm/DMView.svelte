@@ -4,11 +4,12 @@
   import type { DMMessage } from '$lib/stores/dm';
   import { authStore } from '$lib/stores/auth';
   import { draftStore } from '$lib/stores/drafts';
+  import type { NDKRelay } from '@nostr-dev-kit/ndk';
 
   /**
    * Relay instance (would be passed as prop in real implementation)
    */
-  export let relay: any = null;
+  export let relay: NDKRelay | null = null;
 
   let messageInput = '';
   let messagesContainer: HTMLDivElement;

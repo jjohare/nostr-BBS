@@ -4,8 +4,8 @@
  * Manages user access to channel sections (areas).
  *
  * Access Model:
- * - fairfield-guests: Auto-approved for all authenticated users
- * - minimoonoir-rooms: Requires admin approval
+ * - public-lobby: Auto-approved for all authenticated users
+ * - community-rooms: Requires admin approval
  * - dreamlab: Requires admin approval
  *
  * Flow:
@@ -38,7 +38,7 @@ const KIND_SECTION_STATS = 30079;      // Section statistics (replaceable)
 /**
  * Storage key for caching section access
  */
-const STORAGE_KEY = 'minimoonoir-section-access';
+const STORAGE_KEY = 'nostr_bbs_section_access';
 
 /**
  * Section access store state
@@ -53,8 +53,8 @@ interface SectionAccessState {
 
 const initialState: SectionAccessState = {
   access: [
-    // fairfield-guests is auto-approved for all authenticated users
-    { section: 'fairfield-guests', status: 'approved' }
+    // public-lobby is auto-approved for all authenticated users
+    { section: 'public-lobby', status: 'approved' }
   ],
   pendingRequests: [],
   stats: [],
@@ -72,13 +72,13 @@ function loadFromStorage(): SectionAccessState {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      // Ensure fairfield-guests is always approved
+      // Ensure public-lobby is always approved
       const hasGuestsAccess = parsed.access?.some(
-        (a: UserSectionAccess) => a.section === 'fairfield-guests'
+        (a: UserSectionAccess) => a.section === 'public-lobby'
       );
       if (!hasGuestsAccess) {
         parsed.access = [
-          { section: 'fairfield-guests', status: 'approved' },
+          { section: 'public-lobby', status: 'approved' },
           ...(parsed.access || [])
         ];
       }
@@ -156,8 +156,8 @@ function createSectionStore() {
         return { success: false, error: 'Request already pending' };
       }
 
-      // For fairfield-guests, auto-approve
-      if (section === 'fairfield-guests') {
+      // For public-lobby, auto-approve
+      if (section === 'public-lobby') {
         update(state => ({
           ...state,
           access: [
@@ -253,11 +253,15 @@ function createSectionStore() {
           const signer = ndk.signer;
 
           if (signer) {
+            interface NDKUser {
+              pubkey: string;
+            }
+
             const dmEvent = new NDKEvent(ndk);
             dmEvent.kind = 4; // NIP-04 encrypted DM
             dmEvent.tags = [['p', request.requesterPubkey]];
             dmEvent.content = await signer.encrypt(
-              { pubkey: request.requesterPubkey } as any,
+              { pubkey: request.requesterPubkey } as NDKUser,
               `Your access request for ${request.section} has been denied. Reason: ${reason}`
             );
             await dmEvent.sign(signer);

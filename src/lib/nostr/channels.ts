@@ -100,8 +100,8 @@ export async function createChannel(options: ChannelCreateOptions): Promise<Crea
 		event.tags.push(['encrypted', 'true']);
 	}
 
-	// Add section tag (default to fairfield-guests)
-	const section = options.section || 'fairfield-guests';
+	// Add section tag (default to public-lobby)
+	const section = options.section || 'public-lobby';
 	event.tags.push(['section', section]);
 
 	// Sign and publish
@@ -228,7 +228,7 @@ export async function fetchChannels(limit = 100): Promise<CreatedChannel[]> {
 				visibility: (visibilityTag?.[1] as any) || 'public',
 				cohorts: cohortTag?.[1]?.split(',').filter(Boolean) || [],
 				encrypted: encryptedTag?.[1] === 'true',
-				section: (sectionTag?.[1] as ChannelSection) || 'fairfield-guests',
+				section: (sectionTag?.[1] as ChannelSection) || 'public-lobby',
 				createdAt: event.created_at || 0,
 				creatorPubkey: event.pubkey,
 			});

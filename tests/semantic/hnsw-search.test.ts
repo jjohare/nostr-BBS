@@ -20,9 +20,11 @@ vi.mock('$lib/db', () => ({
 // Mock hnswlib-wasm module
 const mockSearchKnn = vi.fn();
 const mockSetEf = vi.fn();
+const mockAddPoint = vi.fn();
 const mockHnswIndex = {
   searchKnn: mockSearchKnn,
-  setEf: mockSetEf
+  setEf: mockSetEf,
+  addPoint: mockAddPoint
 };
 
 const mockHierarchicalNSW = vi.fn().mockReturnValue(mockHnswIndex);

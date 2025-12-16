@@ -1,0 +1,407 @@
+/**
+ * Config Loader Tests
+ *
+ * Tests for configuration loading, validation, and persistence
+ */
+
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import type { SectionsConfig } from '$lib/config/types';
+import {
+	loadConfig,
+	saveConfig,
+	clearConfigCache,
+	getAppConfig,
+	getRoles,
+	getRole,
+	getCohorts,
+	getCohort,
+	getSections,
+	getSection,
+	getDefaultSection,
+	getSectionsByAccess,
+	getCalendarAccessLevel,
+	roleHasCapability,
+	roleIsHigherThan,
+	getHighestRole,
+	getSuperuser,
+	isSuperuser,
+	getSectionConfigMap
+} from '$lib/config/loader';
+
+describe('Config Loader', () => {
+	// Mock localStorage
+	let localStorageMock: { [key: string]: string } = {};
+
+	beforeEach(() => {
+		// Clear all mocks
+		localStorageMock = {};
+		vi.spyOn(Storage.prototype, 'getItem').mockImplementation(
+			(key: string) => localStorageMock[key] || null
+		);
+		vi.spyOn(Storage.prototype, 'setItem').mockImplementation(
+			(key: string, value: string) => {
+				localStorageMock[key] = value;
+			}
+		);
+		vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(
+			(key: string) => {
+				delete localStorageMock[key];
+			}
+		);
+		vi.spyOn(Storage.prototype, 'clear').mockImplementation(() => {
+			localStorageMock = {};
+		});
+
+		// Clear config cache
+		clearConfigCache();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	describe('loadConfig', () => {
+		it('should load default config when no custom config exists', () => {
+			const config = loadConfig();
+
+			expect(config).toBeDefined();
+			expect(config.app.name).toBe('Minimoomaa Noir');
+			expect(config.sections.length).toBeGreaterThan(0);
+			expect(config.roles.length).toBeGreaterThan(0);
+		});
+
+		it('should load custom config from localStorage if exists', () => {
+			const customConfig: SectionsConfig = {
+				app: {
+					name: 'Custom App',
+					version: '2.0.0',
+					defaultSection: 'test-section'
+				},
+				roles: [
+					{ id: 'guest', name: 'Guest', level: 0, description: 'Guest user' },
+					{ id: 'admin', name: 'Admin', level: 4, description: 'Admin user' }
+				],
+				cohorts: [{ id: 'test-cohort', name: 'Test Cohort', description: 'Test' }],
+				sections: [
+					{
+						id: 'test-section',
+						name: 'Test Section',
+						description: 'Test',
+						icon: 'test',
+						order: 1,
+						access: { requiresApproval: false, defaultRole: 'guest', autoApprove: true },
+						features: {
+							showStats: true,
+							allowChannelCreation: false,
+							calendar: { access: 'full', canCreate: false }
+						},
+						ui: { color: '#000000' }
+					}
+				],
+				calendarAccessLevels: [
+					{
+						id: 'full',
+						name: 'Full',
+						description: 'Full',
+						canView: true,
+						canViewDetails: true
+					}
+				],
+				channelVisibility: [{ id: 'public', name: 'Public', description: 'Public' }]
+			};
+
+			localStorageMock['minimoonoir-custom-config'] = JSON.stringify(customConfig);
+			clearConfigCache();
+
+			const config = loadConfig();
+			expect(config.app.name).toBe('Custom App');
+			expect(config.app.version).toBe('2.0.0');
+		});
+
+		it('should fall back to default config if stored config is invalid', () => {
+			localStorageMock['minimoonoir-custom-config'] = 'invalid json';
+			clearConfigCache();
+
+			const config = loadConfig();
+			expect(config.app.name).toBe('Minimoomaa Noir');
+		});
+
+		it('should cache config after first load', () => {
+			const config1 = loadConfig();
+			const config2 = loadConfig();
+			expect(config1).toBe(config2); // Same reference
+		});
+	});
+
+	describe('saveConfig', () => {
+		it('should save valid config to localStorage', () => {
+			const config = loadConfig();
+			config.app.name = 'Updated Name';
+
+			saveConfig(config);
+
+			expect(localStorageMock['minimoonoir-custom-config']).toBeDefined();
+			const stored = JSON.parse(localStorageMock['minimoonoir-custom-config']);
+			expect(stored.app.name).toBe('Updated Name');
+		});
+
+		it('should throw error if config is invalid', () => {
+			const invalidConfig = {
+				app: { name: '', version: '1.0.0', defaultSection: 'test' }
+			} as SectionsConfig;
+
+			expect(() => saveConfig(invalidConfig)).toThrow();
+		});
+
+		it('should validate config before saving', () => {
+			const invalidConfig = {
+				app: { name: 'Test', version: '1.0.0', defaultSection: 'test' },
+				sections: [],
+				roles: []
+			} as SectionsConfig;
+
+			expect(() => saveConfig(invalidConfig)).toThrow('No sections defined');
+		});
+
+		it('should not save in non-browser environment', () => {
+			vi.doMock('$app/environment', () => ({ browser: false }));
+
+			const config = loadConfig();
+			saveConfig(config);
+
+			// Should not throw, but also shouldn't save
+			expect(localStorageMock['minimoonoir-custom-config']).toBeUndefined();
+		});
+	});
+
+	describe('validation', () => {
+		it('should require app.name', () => {
+			const config = loadConfig();
+			config.app.name = '';
+
+			expect(() => saveConfig(config)).toThrow('Missing app.name');
+		});
+
+		it('should require at least one section', () => {
+			const config = loadConfig();
+			config.sections = [];
+
+			expect(() => saveConfig(config)).toThrow('No sections defined');
+		});
+
+		it('should require at least one role', () => {
+			const config = loadConfig();
+			config.roles = [];
+
+			expect(() => saveConfig(config)).toThrow('No roles defined');
+		});
+
+		it('should validate section references to roles', () => {
+			const config = loadConfig();
+			config.sections[0].access.defaultRole = 'nonexistent-role' as any;
+
+			expect(() => saveConfig(config)).toThrow('references unknown role');
+		});
+	});
+
+	describe('accessor functions', () => {
+		it('should get app config', () => {
+			const appConfig = getAppConfig();
+			expect(appConfig.name).toBe('Minimoomaa Noir');
+			expect(appConfig.version).toBeDefined();
+		});
+
+		it('should get all roles', () => {
+			const roles = getRoles();
+			expect(roles.length).toBeGreaterThan(0);
+			expect(roles[0]).toHaveProperty('id');
+			expect(roles[0]).toHaveProperty('name');
+			expect(roles[0]).toHaveProperty('level');
+		});
+
+		it('should get specific role by id', () => {
+			const guestRole = getRole('guest');
+			expect(guestRole).toBeDefined();
+			expect(guestRole?.id).toBe('guest');
+			expect(guestRole?.level).toBe(0);
+		});
+
+		it('should return undefined for nonexistent role', () => {
+			const role = getRole('nonexistent' as any);
+			expect(role).toBeUndefined();
+		});
+
+		it('should get all cohorts', () => {
+			const cohorts = getCohorts();
+			expect(cohorts.length).toBeGreaterThan(0);
+			expect(cohorts[0]).toHaveProperty('id');
+			expect(cohorts[0]).toHaveProperty('name');
+		});
+
+		it('should get specific cohort by id', () => {
+			const cohorts = getCohorts();
+			if (cohorts.length > 0) {
+				const cohort = getCohort(cohorts[0].id);
+				expect(cohort).toBeDefined();
+				expect(cohort?.id).toBe(cohorts[0].id);
+			}
+		});
+
+		it('should get all sections sorted by order', () => {
+			const sections = getSections();
+			expect(sections.length).toBeGreaterThan(0);
+
+			// Verify sorting
+			for (let i = 1; i < sections.length; i++) {
+				expect(sections[i].order).toBeGreaterThanOrEqual(sections[i - 1].order);
+			}
+		});
+
+		it('should get specific section by id', () => {
+			const sections = getSections();
+			const section = getSection(sections[0].id);
+			expect(section).toBeDefined();
+			expect(section?.id).toBe(sections[0].id);
+		});
+
+		it('should get default section', () => {
+			const defaultSection = getDefaultSection();
+			expect(defaultSection).toBeDefined();
+			expect(defaultSection.id).toBeDefined();
+		});
+
+		it('should get sections by access requirement', () => {
+			const openSections = getSectionsByAccess(false);
+			const restrictedSections = getSectionsByAccess(true);
+
+			openSections.forEach((s) => {
+				expect(s.access.requiresApproval).toBe(false);
+			});
+
+			restrictedSections.forEach((s) => {
+				expect(s.access.requiresApproval).toBe(true);
+			});
+		});
+
+		it('should get calendar access level', () => {
+			const fullAccess = getCalendarAccessLevel('full');
+			expect(fullAccess).toBeDefined();
+			expect(fullAccess?.id).toBe('full');
+			expect(fullAccess?.canView).toBe(true);
+		});
+	});
+
+	describe('roleHasCapability', () => {
+		it('should return true for admin with any capability', () => {
+			expect(roleHasCapability('admin', 'any.capability')).toBe(true);
+		});
+
+		it('should return true when role has specific capability', () => {
+			expect(roleHasCapability('moderator', 'channel.create')).toBe(true);
+			expect(roleHasCapability('moderator', 'message.delete')).toBe(true);
+		});
+
+		it('should return false when role lacks capability', () => {
+			expect(roleHasCapability('guest', 'channel.create')).toBe(false);
+		});
+
+		it('should return false for nonexistent role', () => {
+			expect(roleHasCapability('nonexistent' as any, 'test')).toBe(false);
+		});
+	});
+
+	describe('roleIsHigherThan', () => {
+		it('should return true when role A has higher level', () => {
+			expect(roleIsHigherThan('admin', 'guest')).toBe(true);
+			expect(roleIsHigherThan('moderator', 'member')).toBe(true);
+		});
+
+		it('should return false when role A has lower level', () => {
+			expect(roleIsHigherThan('guest', 'admin')).toBe(false);
+			expect(roleIsHigherThan('member', 'moderator')).toBe(false);
+		});
+
+		it('should return false when roles are equal', () => {
+			expect(roleIsHigherThan('guest', 'guest')).toBe(false);
+		});
+
+		it('should return false when roles are invalid', () => {
+			expect(roleIsHigherThan('nonexistent' as any, 'guest')).toBe(false);
+			expect(roleIsHigherThan('guest', 'nonexistent' as any)).toBe(false);
+		});
+	});
+
+	describe('getHighestRole', () => {
+		it('should return highest role from list', () => {
+			expect(getHighestRole(['guest', 'admin', 'member'])).toBe('admin');
+			expect(getHighestRole(['guest', 'member', 'moderator'])).toBe('moderator');
+		});
+
+		it('should return guest for empty list', () => {
+			expect(getHighestRole([])).toBe('guest');
+		});
+
+		it('should return single role in list', () => {
+			expect(getHighestRole(['moderator'])).toBe('moderator');
+		});
+	});
+
+	describe('superuser', () => {
+		it('should get superuser config if defined', () => {
+			const customConfig: SectionsConfig = {
+				...loadConfig(),
+				superuser: {
+					pubkey: 'a'.repeat(64),
+					name: 'Super Admin',
+					relayUrl: 'wss://relay.example.com'
+				}
+			};
+
+			localStorageMock['minimoonoir-custom-config'] = JSON.stringify(customConfig);
+			clearConfigCache();
+
+			const superuser = getSuperuser();
+			expect(superuser).toBeDefined();
+			expect(superuser?.pubkey).toBe('a'.repeat(64));
+			expect(superuser?.name).toBe('Super Admin');
+		});
+
+		it('should return undefined if no superuser configured', () => {
+			const superuser = getSuperuser();
+			expect(superuser).toBeUndefined();
+		});
+
+		it('should identify superuser by pubkey', () => {
+			const customConfig: SectionsConfig = {
+				...loadConfig(),
+				superuser: {
+					pubkey: 'a'.repeat(64),
+					name: 'Super Admin'
+				}
+			};
+
+			localStorageMock['minimoonoir-custom-config'] = JSON.stringify(customConfig);
+			clearConfigCache();
+
+			expect(isSuperuser('a'.repeat(64))).toBe(true);
+			expect(isSuperuser('b'.repeat(64))).toBe(false);
+		});
+
+		it('should return false for superuser check when no superuser configured', () => {
+			expect(isSuperuser('a'.repeat(64))).toBe(false);
+		});
+	});
+
+	describe('getSectionConfigMap', () => {
+		it('should return map of section IDs to configs', () => {
+			const map = getSectionConfigMap();
+			const sections = getSections();
+
+			expect(Object.keys(map).length).toBe(sections.length);
+			sections.forEach((section) => {
+				expect(map[section.id]).toBeDefined();
+				expect(map[section.id].name).toBe(section.name);
+			});
+		});
+	});
+});

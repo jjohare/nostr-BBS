@@ -20,7 +20,7 @@
   let formCohorts = '';
   let formVisibility: 'public' | 'cohort' | 'private' = 'public';
   let formEncrypted = false;
-  let formSection: ChannelSection = 'fairfield-guests';
+  let formSection: ChannelSection = 'public-lobby';
 
   let filterVisibility = '';
   let searchQuery = '';
@@ -56,7 +56,7 @@
     formCohorts = '';
     formVisibility = 'public';
     formEncrypted = false;
-    formSection = 'fairfield-guests';
+    formSection = 'public-lobby';
     editingChannel = null;
   }
 
@@ -85,7 +85,7 @@
     formCohorts = channel.cohorts.join(', ');
     formVisibility = channel.visibility;
     formEncrypted = channel.encrypted;
-    formSection = channel.section || 'fairfield-guests';
+    formSection = channel.section || 'public-lobby';
     showCreateForm = true;
   }
 

@@ -55,8 +55,8 @@ export async function buildSearchIndex(onProgress?: (current: number, total: num
 
   // Get all non-deleted messages
   const messages = await db.messages
-    .where('deleted')
-    .equals(0)
+    .toCollection()
+    .filter(msg => !msg.deleted)
     .toArray();
 
   const total = messages.length;

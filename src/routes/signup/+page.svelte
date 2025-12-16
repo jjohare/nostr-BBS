@@ -56,7 +56,7 @@
 </script>
 
 <svelte:head>
-  <title>Sign Up - Minimoomaa Noir</title>
+  <title>Sign Up - Nostr BBS</title>
 </svelte:head>
 
 {#if step === 'signup'}

@@ -1,6 +1,6 @@
 {
-	"name": "Minimoonoir",
-	"short_name": "Minimoonoir",
+	"name": "Nostr BBS",
+	"short_name": "Nostr BBS",
 	"description": "Privacy-first Nostr messaging platform with encrypted DMs and calendar events",
 	"start_url": "/",
 	"scope": "/",

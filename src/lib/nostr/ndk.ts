@@ -39,7 +39,7 @@ export function getNDK(): NDK {
 
 		ndkInstance = new NDK({
 			explicitRelayUrls: relayUrls,
-			cacheAdapter: dexieAdapter
+			cacheAdapter: dexieAdapter as any
 		});
 
 		currentRelayUrls = [...relayUrls];

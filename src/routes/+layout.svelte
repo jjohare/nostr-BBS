@@ -115,7 +115,7 @@
 </script>
 
 <svelte:head>
-	<title>Minimoomaa Noir</title>
+	<title>Nostr BBS</title>
 </svelte:head>
 
 <!-- Skip to main content link for accessibility -->
@@ -127,7 +127,7 @@
 		<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6" aria-hidden="true">
 			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
 		</svg>
-		<span>Install Minimoomaa Noir for offline access</span>
+		<span>Install Nostr BBS for offline access</span>
 		<div class="flex gap-2">
 			<button class="btn btn-sm btn-primary" on:click={handleInstall} aria-label="Install application">Install</button>
 			<button class="btn btn-sm btn-ghost" on:click={dismissInstallBanner} aria-label="Dismiss install banner">Dismiss</button>
