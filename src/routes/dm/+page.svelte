@@ -71,7 +71,7 @@
 </script>
 
 <svelte:head>
-  <title>Direct Messages - Nostr BBS</title>
+  <title>Direct Messages - Fairfield</title>
 </svelte:head>
 
 <div class="container mx-auto p-4 max-w-2xl">

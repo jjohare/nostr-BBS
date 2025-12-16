@@ -37,7 +37,7 @@ export const ADMIN_PUBKEY = getEnv('VITE_ADMIN_PUBKEY', '');
 /**
  * Application name for Nostr events
  */
-export const APP_NAME = getEnv('VITE_APP_NAME', 'Nostr BBS');
+export const APP_NAME = getEnv('VITE_APP_NAME', 'Fairfield - DreamLab - Cumbria');
 
 /**
  * Application version

@@ -12,7 +12,7 @@
 </script>
 
 <svelte:head>
-  <title>Login - Nostr BBS</title>
+  <title>Login - Fairfield</title>
 </svelte:head>
 
 <Login on:success={handleSuccess} />

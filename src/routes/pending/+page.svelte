@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-  <title>Pending Approval - Nostr BBS</title>
+  <title>Pending Approval - Fairfield</title>
 </svelte:head>
 
 <div class="flex items-center justify-center min-h-[calc(100vh-64px)] p-4">

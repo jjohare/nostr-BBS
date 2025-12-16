@@ -102,7 +102,7 @@
 </script>
 
 <svelte:head>
-  <title>Admin Calendar - Nostr BBS</title>
+  <title>Admin Calendar - Fairfield</title>
 </svelte:head>
 
 <div class="container mx-auto p-4 max-w-7xl">

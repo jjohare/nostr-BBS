@@ -12,17 +12,17 @@
 </script>
 
 <svelte:head>
-	<title>Nostr BBS - Decentralized Community Chat</title>
+	<title>Fairfield - DreamLab - Cumbria</title>
 </svelte:head>
 
 <div class="flex flex-col items-center justify-center min-h-screen p-4">
 	<div class="max-w-2xl w-full space-y-8 text-center">
 		<div class="space-y-4">
 			<h1 class="text-6xl font-bold gradient-text">
-				Nostr BBS
+				Fairfield
 			</h1>
 			<p class="text-xl text-base-content/70">
-				Decentralized Chat with AI Integration
+				DreamLab - Cumbria
 			</p>
 		</div>
 

@@ -20,10 +20,10 @@ import { parse as parseYaml } from 'yaml';
 import { browser } from '$app/environment';
 
 // Default YAML config embedded at build time
-// FAIRFIELD FORK: Hardcoded Fairfield/Minimoonoir configuration
+// FAIRFIELD FORK: Hardcoded Fairfield/DreamLab/Cumbria configuration
 const defaultConfigYaml = `
 app:
-  name: "Minimoonoir"
+  name: "Fairfield - DreamLab - Cumbria"
   version: "1.0.0"
   defaultSection: "fairfield-guests"
 
@@ -94,7 +94,7 @@ sections:
       color: "#6366f1"
 
   - id: "minimoonoir-rooms"
-    name: "Minimoonoir"
+    name: "MiniMooNoir"
     description: "Core community chatrooms - request access to join"
     icon: "moon"
     order: 2
@@ -114,7 +114,7 @@ sections:
   - id: "dreamlab"
     name: "DreamLab"
     description: "Creative and experimental projects - request access to join"
-    icon: "sparkles"
+    icon: "lightbulb"
     order: 3
     access:
       requiresApproval: true
@@ -253,12 +253,12 @@ function validateConfig(config: SectionsConfig): void {
 
 /**
  * Get default configuration (fallback)
- * FAIRFIELD FORK: Hardcoded Fairfield/Minimoonoir configuration
+ * FAIRFIELD FORK: Hardcoded Fairfield/DreamLab/Cumbria configuration
  */
 function getDefaultConfig(): SectionsConfig {
 	return {
 		app: {
-			name: 'Minimoonoir',
+			name: 'Fairfield - DreamLab - Cumbria',
 			version: '1.0.0',
 			defaultSection: 'fairfield-guests'
 		},
@@ -311,7 +311,7 @@ function getDefaultConfig(): SectionsConfig {
 			},
 			{
 				id: 'minimoonoir-rooms',
-				name: 'Minimoonoir',
+				name: 'MiniMooNoir',
 				description: 'Core community chatrooms - request access to join',
 				icon: '🌙',
 				order: 2,
@@ -327,7 +327,7 @@ function getDefaultConfig(): SectionsConfig {
 				id: 'dreamlab',
 				name: 'DreamLab',
 				description: 'Creative and experimental projects - request access to join',
-				icon: '✨',
+				icon: '💡',
 				order: 3,
 				access: { requiresApproval: true, defaultRole: 'member', autoApprove: false },
 				features: {

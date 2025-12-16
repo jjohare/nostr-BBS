@@ -87,7 +87,7 @@
 </script>
 
 <svelte:head>
-  <title>Events - Nostr BBS</title>
+  <title>Events - Fairfield</title>
 </svelte:head>
 
 <div class="container mx-auto p-4 max-w-6xl">

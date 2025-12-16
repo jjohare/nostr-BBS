@@ -56,7 +56,7 @@
 </script>
 
 <svelte:head>
-  <title>Sign Up - Nostr BBS</title>
+  <title>Sign Up - Fairfield</title>
 </svelte:head>
 
 {#if step === 'signup'}

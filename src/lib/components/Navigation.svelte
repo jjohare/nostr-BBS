@@ -101,8 +101,8 @@
 
 <nav class="navbar" role="navigation" aria-label="Main navigation">
   <div class="nav-container">
-    <a href="{base}/" class="logo" aria-label="Nostr BBS - Home">
-      Nostr BBS
+    <a href="{base}/" class="logo" aria-label="Fairfield - Home">
+      Fairfield
     </a>
 
     <!-- Hamburger Menu Button (Mobile Only) -->

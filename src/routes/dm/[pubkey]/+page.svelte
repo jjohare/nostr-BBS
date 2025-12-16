@@ -111,7 +111,7 @@
 </script>
 
 <svelte:head>
-  <title>DM with {formatPubkey(recipientPubkey)} - Nostr BBS</title>
+  <title>DM with {formatPubkey(recipientPubkey)} - Fairfield</title>
 </svelte:head>
 
 {#if loading}

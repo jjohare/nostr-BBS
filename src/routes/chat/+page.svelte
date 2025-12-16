@@ -82,7 +82,7 @@
 </script>
 
 <svelte:head>
-  <title>Channels - Nostr BBS</title>
+  <title>Channels - Fairfield</title>
 </svelte:head>
 
 <div class="container mx-auto p-4 max-w-6xl">
