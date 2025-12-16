@@ -102,7 +102,7 @@
 </script>
 
 <svelte:head>
-  <title>Admin Calendar - Minimoomaa Noir</title>
+  <title>Admin Calendar - Nostr BBS</title>
 </svelte:head>
 
 <div class="container mx-auto p-4 max-w-7xl">

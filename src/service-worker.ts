@@ -1,5 +1,5 @@
 /**
- * Minimoomaa Noir PWA Service Worker
+ * Nostr BBS PWA Service Worker
  * Implements caching strategies, offline support, and background sync
  */
 
@@ -11,9 +11,9 @@ declare const self: ServiceWorkerGlobalScope;
 const manifest = self.__WB_MANIFEST;
 
 const CACHE_VERSION = 'v1';
-const STATIC_CACHE = `minimoomaa-noir-static-${CACHE_VERSION}`;
-const DYNAMIC_CACHE = `minimoomaa-noir-dynamic-${CACHE_VERSION}`;
-const PROFILE_CACHE = `minimoomaa-noir-profiles-${CACHE_VERSION}`;
+const STATIC_CACHE = `nostr-bbs-static-${CACHE_VERSION}`;
+const DYNAMIC_CACHE = `nostr-bbs-dynamic-${CACHE_VERSION}`;
+const PROFILE_CACHE = `nostr-bbs-profiles-${CACHE_VERSION}`;
 
 // Use manifest for precaching, or fallback to static list
 const STATIC_ASSETS = manifest?.length > 0
@@ -25,7 +25,7 @@ const STATIC_ASSETS = manifest?.length > 0
       '/favicon.ico'
     ];
 
-const QUEUE_DB_NAME = 'minimoomaa-noir-queue';
+const QUEUE_DB_NAME = 'nostr-bbs-queue';
 const QUEUE_STORE_NAME = 'outgoing-messages';
 const QUEUE_DB_VERSION = 1;
 
@@ -158,7 +158,7 @@ self.addEventListener('activate', (event) => {
       await Promise.all(
         cacheNames
           .filter(name =>
-            name.startsWith('minimoomaa-noir-') &&
+            name.startsWith('nostr-bbs-') &&
             !name.includes(CACHE_VERSION)
           )
           .map(name => caches.delete(name))
@@ -414,7 +414,7 @@ self.addEventListener('push', (event) => {
       body: data.body,
       icon: '/icon-192x192.png',
       badge: '/icon-192x192.png',
-      tag: data.tag || 'minimoomaa-noir',
+      tag: data.tag || 'nostr-bbs',
       data: data.url
     })
   );

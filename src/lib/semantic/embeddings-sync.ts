@@ -32,6 +32,17 @@ interface SyncState {
   indexLoaded: boolean;
 }
 
+interface NetworkInformation {
+  type?: string;
+  effectiveType?: string;
+  saveData?: boolean;
+  metered?: boolean;
+}
+
+interface NavigatorWithConnection extends Navigator {
+  connection?: NetworkInformation;
+}
+
 /**
  * Check if we should sync embeddings
  * Only sync on WiFi or unmetered connections
@@ -39,7 +50,7 @@ interface SyncState {
 export function shouldSync(): boolean {
   if (typeof navigator === 'undefined') return false;
 
-  const connection = (navigator as any).connection;
+  const connection = (navigator as NavigatorWithConnection).connection;
   if (!connection) {
     // Can't detect connection type, allow sync
     return true;

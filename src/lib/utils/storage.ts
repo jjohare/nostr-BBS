@@ -117,9 +117,9 @@ export const safeStorage = {
 };
 
 const STORAGE_KEYS = {
-  PUBKEY: 'Nostr-BBS_nostr_pubkey',
-  ENCRYPTED_PRIVKEY: 'Nostr-BBS_nostr_encrypted_privkey',
-  MNEMONIC_SHOWN: 'Nostr-BBS_nostr_mnemonic_shown'
+  PUBKEY: 'nostr_bbs_nostr_pubkey',
+  ENCRYPTED_PRIVKEY: 'nostr_bbs_nostr_encrypted_privkey',
+  MNEMONIC_SHOWN: 'nostr_bbs_nostr_mnemonic_shown'
 } as const;
 
 export interface StoredKeys {

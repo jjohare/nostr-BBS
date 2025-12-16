@@ -8,7 +8,32 @@
 // Polyfill IndexedDB for Node.js environment (required for Dexie tests)
 import 'fake-indexeddb/auto';
 
-import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
+import { beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
+
+// Mock SvelteKit $app modules globally
+vi.mock('$app/environment', () => ({
+	browser: true,
+	dev: true,
+	building: false,
+	version: 'test'
+}));
+
+vi.mock('$app/navigation', () => ({
+	goto: vi.fn(),
+	invalidate: vi.fn(),
+	invalidateAll: vi.fn(),
+	preloadData: vi.fn(),
+	preloadCode: vi.fn(),
+	beforeNavigate: vi.fn(),
+	afterNavigate: vi.fn()
+}));
+
+vi.mock('$app/stores', () => ({
+	getStores: vi.fn(),
+	navigating: { subscribe: vi.fn() },
+	page: { subscribe: vi.fn() },
+	updated: { subscribe: vi.fn() }
+}));
 
 /**
  * Global test setup - runs once before all tests
@@ -17,6 +42,18 @@ beforeAll(() => {
   // Set deterministic random seed for reproducible tests
   // Note: This doesn't affect crypto operations which use secure randomness
   process.env.NODE_ENV = 'test';
+
+  // Mock URL.createObjectURL and URL.revokeObjectURL for jsdom
+  if (typeof URL.createObjectURL === 'undefined') {
+    global.URL.createObjectURL = function(blob: Blob) {
+      return 'blob:mock-url-' + Math.random().toString(36);
+    };
+  }
+  if (typeof URL.revokeObjectURL === 'undefined') {
+    global.URL.revokeObjectURL = function(url: string) {
+      // Mock implementation - no-op
+    };
+  }
 });
 
 /**

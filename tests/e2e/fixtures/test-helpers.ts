@@ -55,7 +55,7 @@ export async function loginAsAdmin(page: Page): Promise<void> {
   await page.waitForTimeout(2000);
 
   // Verify admin is logged in
-  const pubkey = await page.evaluate(() => localStorage.getItem('Nostr-BBS_nostr_pubkey'));
+  const pubkey = await page.evaluate(() => localStorage.getItem('nostr_bbs_nostr_pubkey'));
   expect(pubkey).toBeTruthy();
 }
 
@@ -119,14 +119,14 @@ export async function signupNewUser(page: Page): Promise<string> {
 /**
  * Navigate to a specific section
  */
-export async function navigateToSection(page: Page, section: 'Nostr-BBS-guests' | 'Nostr-BBS-rooms' | 'dreamlab'): Promise<void> {
+export async function navigateToSection(page: Page, section: 'public-lobby' | 'community-rooms' | 'dreamlab'): Promise<void> {
   // Ensure we're on chat page
   await page.goto('/chat');
 
   // Find and click section card
   const sectionNames: Record<string, RegExp> = {
-    'Nostr-BBS-guests': /Nostr-BBS guests/i,
-    'Nostr-BBS-rooms': /Nostr-BBS|minimoo noir/i,
+    'public-lobby': /public lobby|public/i,
+    'community-rooms': /community rooms|community/i,
     'dreamlab': /dreamlab|dream lab/i
   };
 
@@ -137,7 +137,7 @@ export async function navigateToSection(page: Page, section: 'Nostr-BBS-guests' 
 /**
  * Request access to a section
  */
-export async function requestSectionAccess(page: Page, section: 'Nostr-BBS-rooms' | 'dreamlab', message?: string): Promise<void> {
+export async function requestSectionAccess(page: Page, section: 'community-rooms' | 'dreamlab', message?: string): Promise<void> {
   // Click on section card
   await navigateToSection(page, section);
 
@@ -295,7 +295,7 @@ export async function logout(page: Page): Promise<void> {
  * Get current user's pubkey from localStorage
  */
 export async function getCurrentUserPubkey(page: Page): Promise<string | null> {
-  return await page.evaluate(() => localStorage.getItem('Nostr-BBS_nostr_pubkey'));
+  return await page.evaluate(() => localStorage.getItem('nostr_bbs_nostr_pubkey'));
 }
 
 /**
@@ -305,7 +305,7 @@ export async function waitForNostrConnection(page: Page, timeout = 5000): Promis
   await page.waitForFunction(
     () => {
       // Check if NDK is connected (this may vary based on implementation)
-      return window.localStorage.getItem('Nostr-BBS_nostr_pubkey') !== null;
+      return window.localStorage.getItem('nostr_bbs_nostr_pubkey') !== null;
     },
     { timeout }
   );

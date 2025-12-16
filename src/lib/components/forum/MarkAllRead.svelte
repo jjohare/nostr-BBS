@@ -3,7 +3,7 @@
   import { browser } from '$app/environment';
 
   const dispatch = createEventDispatcher();
-  const READ_KEY = 'minimoomaa_read_posts';
+  const READ_KEY = 'nostr_bbs_read_posts';
 
   let isMarking = false;
   let justMarked = false;

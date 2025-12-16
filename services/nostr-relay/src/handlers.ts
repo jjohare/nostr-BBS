@@ -1,22 +1,21 @@
 import { WebSocket } from 'ws';
-import { Database, NostrEvent } from './db';
+import { NostrDatabase, NostrEvent } from './db';
 import { Whitelist } from './whitelist';
 import { RateLimiter } from './rateLimit';
 import crypto from 'crypto';
 import { schnorr } from '@noble/curves/secp256k1';
 
-// Extend WebSocket to include IP address
 interface ExtendedWebSocket extends WebSocket {
   ip?: string;
 }
 
 export class NostrHandlers {
-  private db: Database;
+  private db: NostrDatabase;
   private whitelist: Whitelist;
   private rateLimiter: RateLimiter;
   private subscriptions: Map<string, Map<string, any[]>>;
 
-  constructor(db: Database, whitelist: Whitelist, rateLimiter: RateLimiter) {
+  constructor(db: NostrDatabase, whitelist: Whitelist, rateLimiter: RateLimiter) {
     this.db = db;
     this.whitelist = whitelist;
     this.rateLimiter = rateLimiter;
@@ -54,43 +53,41 @@ export class NostrHandlers {
   }
 
   private async handleEvent(ws: ExtendedWebSocket, event: NostrEvent): Promise<void> {
-    // Check rate limit
     const ip = ws.ip || 'unknown';
     if (!this.rateLimiter.checkEventLimit(ip)) {
       this.sendNotice(ws, 'rate limit exceeded');
       return;
     }
 
-    // Validate event structure
     if (!this.validateEvent(event)) {
       this.sendOK(ws, event.id, false, 'invalid: event validation failed');
       return;
     }
 
-    // Check whitelist
-    if (!this.whitelist.isAllowed(event.pubkey)) {
+    // Check environment whitelist
+    const envAllowed = this.whitelist.isAllowed(event.pubkey);
+    // Check database whitelist
+    const dbAllowed = await this.db.isWhitelisted(event.pubkey);
+
+    if (!envAllowed && !dbAllowed) {
       this.sendOK(ws, event.id, false, 'blocked: pubkey not whitelisted');
       return;
     }
 
-    // Verify event ID
     if (!this.verifyEventId(event)) {
       this.sendOK(ws, event.id, false, 'invalid: event id verification failed');
       return;
     }
 
-    // Verify Schnorr signature
     if (!await this.verifySignature(event)) {
       this.sendOK(ws, event.id, false, 'invalid: signature verification failed');
       return;
     }
 
-    // Save to database
     const saved = await this.db.saveEvent(event);
 
     if (saved) {
       this.sendOK(ws, event.id, true, '');
-      // Broadcast to subscribers
       this.broadcastEvent(event);
     } else {
       this.sendOK(ws, event.id, false, 'error: failed to save event');
@@ -98,20 +95,17 @@ export class NostrHandlers {
   }
 
   private async handleReq(ws: WebSocket, subscriptionId: string, filters: any[]): Promise<void> {
-    // Store subscription
     if (!this.subscriptions.has(ws as any)) {
       this.subscriptions.set(ws as any, new Map());
     }
     this.subscriptions.get(ws as any)!.set(subscriptionId, filters);
 
-    // Query and send matching events
     const events = await this.db.queryEvents(filters);
 
     for (const event of events) {
       this.send(ws, ['EVENT', subscriptionId, event]);
     }
 
-    // Send EOSE (End of Stored Events)
     this.send(ws, ['EOSE', subscriptionId]);
   }
 
@@ -138,7 +132,6 @@ export class NostrHandlers {
   }
 
   private verifyEventId(event: NostrEvent): boolean {
-    // NIP-01: Event ID is SHA256 of serialized event data
     const serialized = JSON.stringify([
       0,
       event.pubkey,
@@ -154,15 +147,10 @@ export class NostrHandlers {
 
   private async verifySignature(event: NostrEvent): Promise<boolean> {
     try {
-      // Convert hex strings to Uint8Array as required by @noble/secp256k1
-      // event.id is the message hash (32 bytes)
-      // event.sig is the Schnorr signature (64 bytes)
-      // event.pubkey is the public key (32 bytes)
       const messageHash = this.hexToBytes(event.id);
       const signature = this.hexToBytes(event.sig);
       const publicKey = this.hexToBytes(event.pubkey);
 
-      // Verify Schnorr signature according to NIP-01
       const isValid = await schnorr.verify(signature, messageHash, publicKey);
       return isValid;
     } catch (error) {
@@ -172,7 +160,6 @@ export class NostrHandlers {
   }
 
   private hexToBytes(hex: string): Uint8Array {
-    // Convert hex string to Uint8Array
     const bytes = new Uint8Array(hex.length / 2);
     for (let i = 0; i < hex.length; i += 2) {
       bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
@@ -222,16 +209,11 @@ export class NostrHandlers {
   handleDisconnect(ws: ExtendedWebSocket): void {
     this.subscriptions.delete(ws as any);
 
-    // Release connection from rate limiter
     if (ws.ip) {
       this.rateLimiter.releaseConnection(ws.ip);
     }
   }
 
-  /**
-   * Track a new connection from the given IP
-   * Returns false if connection limit is exceeded
-   */
   trackConnection(ws: ExtendedWebSocket, ip: string): boolean {
     ws.ip = ip;
 
@@ -243,9 +225,6 @@ export class NostrHandlers {
     return true;
   }
 
-  /**
-   * Get rate limiter statistics
-   */
   getRateLimitStats() {
     return this.rateLimiter.getStats();
   }

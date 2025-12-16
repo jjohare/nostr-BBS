@@ -17,8 +17,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RELAY_URL = process.env.RELAY_URL || 'wss://nostr-relay-617806532906.us-central1.run.app';
 const SYNTHETIC_EVENTS_PATH = path.resolve(__dirname, '../../../scripts/embeddings/output/synthetic_events.json');
 
-// Sample admin pubkey - events will be tagged to this admin
-const ADMIN_PUBKEY = 'e8b487c079b0f67c695ae6c4c2552a47f38adfa2533cc5926bd2c102942fdcb7';
+// Admin pubkey from frontend .env - events will be tagged to this admin
+const ADMIN_PUBKEY = '11ed64225dd5e2c5e18f61ad43d5ad9272d08739d3a20dd25886197b0738663c';
 
 function generateKeypairFromSeed(seed) {
   // Create deterministic private key from seed

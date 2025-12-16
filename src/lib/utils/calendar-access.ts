@@ -41,17 +41,17 @@ export function getCalendarAccessLevel(section: ChannelSection): CalendarAccessL
  * Check if user can view calendar event based on their section memberships
  *
  * Access rules:
- * - Nostr-BBS-guests: full access to all events
- * - Nostr-BBS-rooms: full access to all events
+ * - public-lobby: full access to all events
+ * - community-rooms: full access to all events
  * - dreamlab: availability-only access (can see dates booked, not details)
  */
 export function canViewCalendarEvent(
   userSections: ChannelSection[],
   eventCohortTag?: string
 ): boolean {
-  // Users with Nostr-BBS-guests or Nostr-BBS-rooms have full access
+  // Users with public-lobby or community-rooms have full access
   const hasFullAccess = userSections.some(section =>
-    section === 'Nostr-BBS-guests' || section === 'Nostr-BBS-rooms'
+    section === 'public-lobby' || section === 'community-rooms'
   );
 
   return hasFullAccess;
@@ -110,7 +110,7 @@ export function filterCalendarEvents(
     // Determine access level
     let accessLevel: 'full' | 'availability-only' | 'hidden';
 
-    // Check if user has full access (Nostr-BBS-guests or Nostr-BBS-rooms)
+    // Check if user has full access (public-lobby or community-rooms)
     const hasFullAccess = userSections.some(section =>
       getCalendarAccessLevel(section) === 'full'
     );

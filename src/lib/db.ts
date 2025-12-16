@@ -118,7 +118,7 @@ export interface DBMetadata {
 }
 
 /**
- * Minimoomaa Noir Database
+ * Nostr BBS Database
  */
 class MinimoomaNoirDB extends Dexie {
   messages!: Table<DBMessage, string>;

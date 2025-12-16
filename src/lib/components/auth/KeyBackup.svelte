@@ -25,7 +25,7 @@
     while (indices.size < 3) {
       indices.add(Math.floor(Math.random() * mnemonicWords.length));
     }
-    verificationWords = Array.from(indices).sort((a, b) => a - b);
+    verificationWords = Array.from(indices).sort((a, b) => a - b).map(String);
   }
 
   async function copyPubkey() {
@@ -57,7 +57,7 @@
 
   function verifyWords() {
     verificationPassed = verificationWords.every((wordIndex, i) => {
-      return userInputs[i].trim().toLowerCase() === mnemonicWords[wordIndex].toLowerCase();
+      return userInputs[i].trim().toLowerCase() === mnemonicWords[Number(wordIndex)].toLowerCase();
     });
 
     if (verificationPassed) {
@@ -180,7 +180,7 @@
           {#each verificationWords as wordIndex, i}
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-medium">Word #{wordIndex + 1}</span>
+                <span class="label-text font-medium">Word #{Number(wordIndex) + 1}</span>
               </label>
               <input
                 type="text"

@@ -5,6 +5,8 @@ import { base } from '$app/paths';
 import { encryptPrivateKey, decryptPrivateKey, isEncryptionAvailable } from '$lib/utils/key-encryption';
 
 export interface AuthState {
+  state: 'unauthenticated' | 'authenticating' | 'authenticated';
+  pubkey: string | null;
   isAuthenticated: boolean;
   publicKey: string | null;
   privateKey: string | null;
@@ -20,6 +22,8 @@ export interface AuthState {
 }
 
 const initialState: AuthState = {
+  state: 'unauthenticated',
+  pubkey: null,
   isAuthenticated: false,
   publicKey: null,
   privateKey: null,
@@ -34,8 +38,8 @@ const initialState: AuthState = {
   isReady: false
 };
 
-const STORAGE_KEY = 'Nostr-BBS_keys';
-const SESSION_KEY = 'Nostr-BBS_session';
+const STORAGE_KEY = 'nostr_bbs_keys';
+const SESSION_KEY = 'nostr_bbs_session';
 
 /**
  * Admin Configuration
@@ -98,16 +102,28 @@ function createAuthStore() {
   // Promise that resolves when session restore is complete
   let readyPromise: Promise<void> | null = null;
 
+  // Helper to sync state and pubkey with isAuthenticated and publicKey
+  function syncStateFields(updates: Partial<AuthState>): Partial<AuthState> {
+    const result = { ...updates };
+    if (updates.isAuthenticated !== undefined) {
+      result.state = updates.isAuthenticated ? 'authenticated' : 'unauthenticated';
+    }
+    if (updates.publicKey !== undefined) {
+      result.pubkey = updates.publicKey;
+    }
+    return result;
+  }
+
   // Restore from localStorage on init
   async function restoreSession() {
     if (!browser) {
-      update(state => ({ ...state, isReady: true }));
+      update(state => ({ ...state, ...syncStateFields({ isReady: true }) }));
       return;
     }
 
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
-      update(state => ({ ...state, isReady: true }));
+      update(state => ({ ...state, ...syncStateFields({ isReady: true }) }));
       return;
     }
 
@@ -121,46 +137,52 @@ function createAuthStore() {
           const privateKey = await decryptPrivateKey(parsed.encryptedPrivateKey, sessionKey);
           update(state => ({
             ...state,
-            publicKey: parsed.publicKey,
-            privateKey,
-            nickname: parsed.nickname || null,
-            avatar: parsed.avatar || null,
-            isAuthenticated: true,
-            isAdmin: isAdminPubkey(parsed.publicKey || ''),
-            isEncrypted: true,
-            mnemonicBackedUp: parsed.mnemonicBackedUp || false,
-            isReady: true
+            ...syncStateFields({
+              publicKey: parsed.publicKey,
+              privateKey,
+              nickname: parsed.nickname || null,
+              avatar: parsed.avatar || null,
+              isAuthenticated: true,
+              isAdmin: isAdminPubkey(parsed.publicKey || ''),
+              isEncrypted: true,
+              mnemonicBackedUp: parsed.mnemonicBackedUp || false,
+              isReady: true
+            })
           }));
         } catch {
           // Session key changed (new session) - need to re-authenticate
           update(state => ({
             ...state,
-            publicKey: parsed.publicKey,
-            nickname: parsed.nickname || null,
-            avatar: parsed.avatar || null,
-            isAuthenticated: false,
-            isEncrypted: true,
-            error: 'Session expired. Please enter your password to unlock.',
-            isReady: true
+            ...syncStateFields({
+              publicKey: parsed.publicKey,
+              nickname: parsed.nickname || null,
+              avatar: parsed.avatar || null,
+              isAuthenticated: false,
+              isEncrypted: true,
+              error: 'Session expired. Please enter your password to unlock.',
+              isReady: true
+            })
           }));
         }
       } else if (parsed.privateKey) {
         // Legacy unencrypted data - migrate on next save
         update(state => ({
           ...state,
-          ...parsed,
-          isAuthenticated: true,
-          isAdmin: isAdminPubkey(parsed.publicKey || ''),
-          isEncrypted: false,
-          mnemonicBackedUp: parsed.mnemonicBackedUp || false,
-          isReady: true
+          ...syncStateFields({
+            ...parsed,
+            isAuthenticated: true,
+            isAdmin: isAdminPubkey(parsed.publicKey || ''),
+            isEncrypted: false,
+            mnemonicBackedUp: parsed.mnemonicBackedUp || false,
+            isReady: true
+          })
         }));
       } else {
-        update(state => ({ ...state, isReady: true }));
+        update(state => ({ ...state, ...syncStateFields({ isReady: true }) }));
       }
     } catch {
       localStorage.removeItem(STORAGE_KEY);
-      update(state => ({ ...state, isReady: true }));
+      update(state => ({ ...state, ...syncStateFields({ isReady: true }) }));
     }
   }
 
@@ -226,7 +248,7 @@ function createAuthStore() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(storageData));
       }
 
-      update(state => ({ ...state, ...authData }));
+      update(state => ({ ...state, ...syncStateFields(authData) }));
     },
 
     /**
@@ -275,10 +297,13 @@ function createAuthStore() {
 
         update(state => ({
           ...state,
-          privateKey,
-          isAuthenticated: true,
-          isAdmin: isAdminPubkey(parsed.publicKey || ''),
-          error: null
+          ...syncStateFields({
+            privateKey,
+            publicKey: parsed.publicKey,
+            isAuthenticated: true,
+            isAdmin: isAdminPubkey(parsed.publicKey || ''),
+            error: null
+          })
         }));
 
         return true;

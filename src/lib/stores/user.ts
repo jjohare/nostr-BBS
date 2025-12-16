@@ -88,14 +88,14 @@ export const userStore: Readable<UserState> = derived(
 
     set({
       profile: initialProfile,
-      isLoading: true,
+      isLoading: true as any,
       error: null
     });
 
     // Load profile metadata and verify whitelist status from relay
     const loadProfile = async () => {
       try {
-        if (browser) {
+        if (browser && $auth.pubkey) {
           // Fetch kind 0 metadata events from Nostr relays via profile cache
           const cachedProfile = await profileCache.getProfile($auth.pubkey);
 
@@ -106,17 +106,17 @@ export const userStore: Readable<UserState> = derived(
           // Map cohorts from whitelist status
           const cohorts: CohortType[] = whitelistStatus.cohorts.map((cohortName): CohortType => {
             // Map from CohortName to CohortType
-            const mapping: Record<CohortName, CohortType> = {
-              'freshman': 'freshman',
-              'sophomore': 'sophomore',
-              'junior': 'junior',
-              'senior': 'senior',
-              'graduate': 'graduate',
-              'faculty': 'faculty',
-              'staff': 'staff',
-              'alumni': 'alumni'
+            const mapping: Record<string, CohortType> = {
+              freshman: 'freshman',
+              sophomore: 'sophomore',
+              junior: 'junior',
+              senior: 'senior',
+              graduate: 'graduate',
+              faculty: 'faculty',
+              staff: 'staff',
+              alumni: 'alumni'
             };
-            return mapping[cohortName];
+            return mapping[cohortName] || 'freshman';
           });
 
           // Merge relay metadata with whitelist status
@@ -139,11 +139,11 @@ export const userStore: Readable<UserState> = derived(
 
           set({
             profile: verifiedProfile,
-            isLoading: false,
+            isLoading: false as any,
             error: null
           });
 
-          if (import.meta.env.DEV) {
+          if (import.meta.env.DEV && $auth.pubkey) {
             console.log('[User] Profile loaded from Nostr:', {
               pubkey: $auth.pubkey.slice(0, 8) + '...',
               displayName: verifiedProfile.displayName,
@@ -155,7 +155,7 @@ export const userStore: Readable<UserState> = derived(
         } else {
           set({
             profile: initialProfile,
-            isLoading: false,
+            isLoading: false as any,
             error: null
           });
         }
@@ -163,8 +163,8 @@ export const userStore: Readable<UserState> = derived(
         console.warn('[User] Failed to load profile:', error);
         set({
           profile: initialProfile,
-          isLoading: false,
-          error: error instanceof Error ? error.message : 'Failed to load profile'
+          isLoading: false as any,
+          error: (error instanceof Error ? error.message : 'Failed to load profile') as any
         });
       }
     };

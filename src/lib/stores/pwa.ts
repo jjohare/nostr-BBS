@@ -284,7 +284,15 @@ export async function triggerBackgroundSync(): Promise<void> {
   }
 
   try {
-    await (registration as any).sync.register('sync-messages');
+    interface SyncManager {
+      register(tag: string): Promise<void>;
+    }
+
+    interface ServiceWorkerRegistrationWithSync extends ServiceWorkerRegistration {
+      sync: SyncManager;
+    }
+
+    await (registration as ServiceWorkerRegistrationWithSync).sync.register('sync-messages');
     console.log('[PWA] Background sync registered');
   } catch (error) {
     console.error('[PWA] Background sync failed:', error);

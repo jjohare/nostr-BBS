@@ -258,7 +258,7 @@
 </script>
 
 <svelte:head>
-  <title>{channel?.name || 'Channel'} - Minimoomaa Noir</title>
+  <title>{channel?.name || 'Channel'} - Nostr BBS</title>
 </svelte:head>
 
 {#if loading}

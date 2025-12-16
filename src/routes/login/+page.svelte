@@ -12,7 +12,7 @@
 </script>
 
 <svelte:head>
-  <title>Login - Minimoomaa Noir</title>
+  <title>Login - Nostr BBS</title>
 </svelte:head>
 
 <Login on:success={handleSuccess} />

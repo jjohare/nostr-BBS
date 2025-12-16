@@ -28,12 +28,19 @@
     soundEnabled = localStorage.getItem('toastSoundEnabled') === 'true';
   });
 
+  interface WindowWithWebkitAudioContext extends Window {
+    webkitAudioContext?: typeof AudioContext;
+  }
+
   function playSound(variant: string) {
     if (!soundEnabled) return;
 
     // Simple beep using Web Audio API
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextConstructor = window.AudioContext || (window as WindowWithWebkitAudioContext).webkitAudioContext;
+      if (!AudioContextConstructor) return;
+
+      const audioContext = new AudioContextConstructor();
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 

@@ -100,8 +100,8 @@ export async function createChannel(options: ChannelCreateOptions): Promise<Crea
 		event.tags.push(['encrypted', 'true']);
 	}
 
-	// Add section tag (default to Nostr-BBS-guests)
-	const section = options.section || 'Nostr-BBS-guests';
+	// Add section tag (default to public-lobby)
+	const section = options.section || 'public-lobby';
 	event.tags.push(['section', section]);
 
 	// Sign and publish
@@ -228,7 +228,7 @@ export async function fetchChannels(limit = 100): Promise<CreatedChannel[]> {
 				visibility: (visibilityTag?.[1] as any) || 'public',
 				cohorts: cohortTag?.[1]?.split(',').filter(Boolean) || [],
 				encrypted: encryptedTag?.[1] === 'true',
-				section: (sectionTag?.[1] as ChannelSection) || 'Nostr-BBS-guests',
+				section: (sectionTag?.[1] as ChannelSection) || 'public-lobby',
 				createdAt: event.created_at || 0,
 				creatorPubkey: event.pubkey,
 			});

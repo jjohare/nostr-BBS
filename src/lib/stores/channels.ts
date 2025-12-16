@@ -199,9 +199,9 @@ function buildChannelFromEvents(
     return requestChannelId === groupId;
   });
 
-  // Extract section tag (default to Nostr-BBS-guests)
+  // Extract section tag (default to public-lobby)
   const sectionTag = metaEvent.tags.find(t => t[0] === 'section')?.[1];
-  const section = (sectionTag as ChannelSection) || 'Nostr-BBS-guests';
+  const section = (sectionTag as ChannelSection) || 'public-lobby';
 
   // Extract visibility setting (default to public)
   const visibilityTag = metaEvent.tags.find(t => t[0] === 'visibility')?.[1];
@@ -298,32 +298,32 @@ export function getChannelsBySection(section: ChannelSection): Channel[] {
 }
 
 // Lazy-initialized derived stores for section filtering
-let _Nostr-BBSGuestChannels: ReturnType<typeof derived<typeof channelStore, Channel[]>> | null = null;
-let _Nostr-BBSChannels: ReturnType<typeof derived<typeof channelStore, Channel[]>> | null = null;
+let _publicLobbyChannels: ReturnType<typeof derived<typeof channelStore, Channel[]>> | null = null;
+let _communityRoomsChannels: ReturnType<typeof derived<typeof channelStore, Channel[]>> | null = null;
 let _dreamlabChannels: ReturnType<typeof derived<typeof channelStore, Channel[]>> | null = null;
 
 /**
- * Get channels for Nostr-BBS-guests section (lazy initialization)
+ * Get channels for public-lobby section (lazy initialization)
  */
-export function getNostr-BBSGuestChannels() {
-  if (!_Nostr-BBSGuestChannels) {
-    _Nostr-BBSGuestChannels = derived(channelStore, $store =>
-      $store.channels.filter(c => c.section === 'Nostr-BBS-guests')
+export function getPublicLobbyChannels() {
+  if (!_publicLobbyChannels) {
+    _publicLobbyChannels = derived(channelStore, $store =>
+      $store.channels.filter(c => c.section === 'public-lobby')
     );
   }
-  return _Nostr-BBSGuestChannels;
+  return _publicLobbyChannels;
 }
 
 /**
- * Get channels for Nostr-BBS-rooms section (lazy initialization)
+ * Get channels for community-rooms section (lazy initialization)
  */
-export function getNostr-BBSChannels() {
-  if (!_Nostr-BBSChannels) {
-    _Nostr-BBSChannels = derived(channelStore, $store =>
-      $store.channels.filter(c => c.section === 'Nostr-BBS-rooms')
+export function getCommunityRoomsChannels() {
+  if (!_communityRoomsChannels) {
+    _communityRoomsChannels = derived(channelStore, $store =>
+      $store.channels.filter(c => c.section === 'community-rooms')
     );
   }
-  return _Nostr-BBSChannels;
+  return _communityRoomsChannels;
 }
 
 /**
@@ -339,12 +339,12 @@ export function getDreamlabChannels() {
 }
 
 // Backwards-compatible exports for section filtering
-export const Nostr-BBSGuestChannels = {
-  subscribe: (fn: (value: Channel[]) => void) => getNostr-BBSGuestChannels().subscribe(fn)
+export const publicLobbyChannels = {
+  subscribe: (fn: (value: Channel[]) => void) => getPublicLobbyChannels().subscribe(fn)
 };
 
-export const Nostr-BBSChannels = {
-  subscribe: (fn: (value: Channel[]) => void) => getNostr-BBSChannels().subscribe(fn)
+export const communityRoomsChannels = {
+  subscribe: (fn: (value: Channel[]) => void) => getCommunityRoomsChannels().subscribe(fn)
 };
 
 export const dreamlabChannels = {
