@@ -126,14 +126,16 @@ jobs:
 
       - name: Deployment summary
         run: |
+          SERVICE_URL="${{ steps.get-url.outputs.service_url }}"
+          WS_URL=$(echo "$SERVICE_URL" | sed 's|https://||')
           echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Service**: ${{ env.SERVICE_NAME }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Region**: ${{ env.GCP_REGION }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Service URL**: ${{ steps.get-url.outputs.service_url }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **WebSocket URL**: wss://${{ steps.get-url.outputs.service_url | sed 's|https://||' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service URL**: $SERVICE_URL" >> $GITHUB_STEP_SUMMARY
+          echo "- **WebSocket URL**: wss://$WS_URL" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
           echo "1. Update \`VITE_RELAY_URL\` in repository variables" >> $GITHUB_STEP_SUMMARY
