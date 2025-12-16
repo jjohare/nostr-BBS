@@ -5,6 +5,9 @@
  * This file runs before all tests to set up the testing environment.
  */
 
+// Polyfill IndexedDB for Node.js environment (required for Dexie tests)
+import 'fake-indexeddb/auto';
+
 import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 
 /**
