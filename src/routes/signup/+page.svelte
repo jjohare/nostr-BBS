@@ -6,7 +6,7 @@
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
   import { authStore } from '$lib/stores/auth';
-  import { checkWhitelistStatus } from '$lib/nostr/whitelist';
+  import { checkWhitelistStatus, publishRegistrationRequest } from '$lib/nostr/whitelist';
 
   type FlowStep = 'signup' | 'mnemonic' | 'backup' | 'pending';
   let step: FlowStep = 'signup';
@@ -43,6 +43,16 @@
       // Skip pending approval for pre-approved users
       goto(`${base}/chat`);
     } else {
+      // Publish registration request so admin can see this user
+      try {
+        const result = await publishRegistrationRequest(privateKey);
+        if (!result.success) {
+          console.warn('[Signup] Failed to publish registration request:', result.error);
+        }
+      } catch (error) {
+        console.warn('[Signup] Error publishing registration request:', error);
+      }
+
       // Show pending approval screen
       authStore.setPending(true);
       step = 'pending';
