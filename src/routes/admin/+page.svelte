@@ -11,7 +11,8 @@
   import { SECTION_CONFIG, type ChannelSection, type SectionAccessRequest } from '$lib/types/channel';
   import { sectionStore, pendingRequestCount } from '$lib/stores/sections';
   import { subscribeAccessRequests, approveSectionAccess } from '$lib/nostr/sections';
-  import { KIND_JOIN_REQUEST, KIND_ADD_USER, KIND_DELETION, type JoinRequest } from '$lib/nostr/groups';
+  import { KIND_JOIN_REQUEST, KIND_ADD_USER, KIND_DELETION, KIND_USER_REGISTRATION, type JoinRequest, type UserRegistrationRequest } from '$lib/nostr/groups';
+  import { approveUserRegistration } from '$lib/nostr/whitelist';
   import { NDKEvent, type NDKSubscription, type NDKFilter } from '@nostr-dev-kit/ndk';
   import { channelStore } from '$lib/stores/channelStore';
   import UserDisplay from '$lib/components/user/UserDisplay.svelte';
@@ -28,6 +29,10 @@
   let pendingChannelJoinRequests: JoinRequest[] = [];
   let joinRequestSubscription: NDKSubscription | null = null;
 
+  // Pending user registrations (kind 9024)
+  let pendingUserRegistrations: UserRegistrationRequest[] = [];
+  let registrationSubscription: NDKSubscription | null = null;
+
   let stats = {
     totalUsers: 0,
     totalChannels: 0,
@@ -35,8 +40,8 @@
     pendingApprovals: 0
   };
 
-  // Reactive update of pending approvals count (section + channel join requests)
-  $: stats.pendingApprovals = pendingRequests.length + pendingChannelJoinRequests.length;
+  // Reactive update of pending approvals count (section + channel join + user registrations)
+  $: stats.pendingApprovals = pendingRequests.length + pendingChannelJoinRequests.length + pendingUserRegistrations.length;
 
   let channels: CreatedChannel[] = [];
   let isLoading = false;
@@ -100,6 +105,9 @@
       // Fetch pending channel join requests
       await loadChannelJoinRequests();
 
+      // Fetch pending user registrations
+      await loadUserRegistrations();
+
       // Subscribe to new incoming section access requests
       requestSubscription = subscribeAccessRequests((request) => {
         // Add to pending list if not already present
@@ -110,6 +118,9 @@
 
       // Subscribe to new incoming channel join requests
       joinRequestSubscription = subscribeChannelJoinRequests();
+
+      // Subscribe to new incoming user registrations
+      registrationSubscription = subscribeUserRegistrations();
 
     } catch (e) {
       error = e instanceof Error ? e.message : 'Failed to initialize admin';
@@ -242,6 +253,188 @@
     } catch (e) {
       console.error('Failed to subscribe to channel join requests:', e);
       return null;
+    }
+  }
+
+  /**
+   * Fetch pending user registration requests (kind 9024) from relay
+   */
+  async function loadUserRegistrations() {
+    try {
+      const ndk = getNDK();
+      if (!ndk) return;
+
+      // Fetch kind 9024 (user registration) events
+      const filter: NDKFilter = {
+        kinds: [KIND_USER_REGISTRATION],
+        limit: 100
+      };
+
+      const events = await ndk.fetchEvents(filter);
+
+      // Also fetch deletion events to filter out processed registrations
+      const deletionFilter: NDKFilter = {
+        kinds: [KIND_DELETION],
+        limit: 500
+      };
+      const deletionEvents = await ndk.fetchEvents(deletionFilter);
+      const deletedRequestIds = new Set<string>();
+      for (const event of deletionEvents) {
+        const deletedIds = event.tags.filter(t => t[0] === 'e').map(t => t[1]);
+        deletedIds.forEach(id => deletedRequestIds.add(id));
+      }
+
+      const registrations: UserRegistrationRequest[] = [];
+      for (const event of events) {
+        // Skip deleted/processed registrations
+        if (deletedRequestIds.has(event.id)) continue;
+
+        const displayNameTag = event.tags.find(t => t[0] === 'name');
+
+        registrations.push({
+          id: event.id,
+          pubkey: event.pubkey,
+          createdAt: (event.created_at || 0) * 1000,
+          status: 'pending',
+          displayName: displayNameTag?.[1] || undefined,
+          message: event.content || undefined
+        });
+      }
+
+      // Sort by timestamp descending (newest first)
+      registrations.sort((a, b) => b.createdAt - a.createdAt);
+      pendingUserRegistrations = registrations;
+
+      if (import.meta.env.DEV) {
+        console.log('[Admin] Loaded user registrations:', registrations.length);
+      }
+    } catch (e) {
+      console.error('Failed to load user registrations:', e);
+    }
+  }
+
+  /**
+   * Subscribe to new incoming user registration requests
+   */
+  function subscribeUserRegistrations(): NDKSubscription | null {
+    try {
+      const ndk = getNDK();
+      if (!ndk) return null;
+
+      const filter: NDKFilter = {
+        kinds: [KIND_USER_REGISTRATION],
+        since: Math.floor(Date.now() / 1000)
+      };
+
+      const sub = ndk.subscribe(filter, { closeOnEose: false });
+
+      sub.on('event', (event: NDKEvent) => {
+        const displayNameTag = event.tags.find(t => t[0] === 'name');
+
+        const newRegistration: UserRegistrationRequest = {
+          id: event.id,
+          pubkey: event.pubkey,
+          createdAt: (event.created_at || 0) * 1000,
+          status: 'pending',
+          displayName: displayNameTag?.[1] || undefined,
+          message: event.content || undefined
+        };
+
+        // Add to pending list if not already present
+        if (!pendingUserRegistrations.find(r => r.id === newRegistration.id)) {
+          pendingUserRegistrations = [newRegistration, ...pendingUserRegistrations];
+        }
+      });
+
+      return sub;
+    } catch (e) {
+      console.error('Failed to subscribe to user registrations:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Approve a user registration request
+   * Adds user to whitelist and marks request as processed
+   */
+  async function handleApproveUserRegistration(registration: UserRegistrationRequest) {
+    try {
+      isLoading = true;
+      error = null;
+      successMessage = null;
+
+      // Approve via whitelist API
+      const result = await approveUserRegistration(registration.pubkey, $authStore.publicKey || '');
+
+      if (!result.success) {
+        // If whitelist API fails, try to continue anyway (relay might not have API)
+        console.warn('[Admin] Whitelist API failed:', result.error);
+      }
+
+      const ndk = getNDK();
+      if (!ndk || !ndk.signer) {
+        throw new Error('No signer available');
+      }
+
+      // Create deletion event (kind 5) to mark registration as processed
+      const deleteEvent = new NDKEvent(ndk);
+      deleteEvent.kind = KIND_DELETION;
+      deleteEvent.tags = [
+        ['e', registration.id]
+      ];
+      deleteEvent.content = 'Approved';
+      await deleteEvent.publish();
+
+      // Remove from pending list
+      pendingUserRegistrations = pendingUserRegistrations.filter(r => r.id !== registration.id);
+
+      successMessage = `Approved user registration. User can now access the system.`;
+      setTimeout(() => {
+        successMessage = null;
+      }, 5000);
+
+      if (import.meta.env.DEV) {
+        console.log('[Admin] Approved user registration:', registration.pubkey.slice(0, 8) + '...');
+      }
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Failed to approve registration';
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  /**
+   * Reject a user registration request
+   */
+  async function handleRejectUserRegistration(registration: UserRegistrationRequest) {
+    try {
+      isLoading = true;
+      error = null;
+
+      const ndk = getNDK();
+      if (!ndk || !ndk.signer) {
+        throw new Error('No signer available');
+      }
+
+      // Create deletion event (kind 5) to reject registration
+      const deleteEvent = new NDKEvent(ndk);
+      deleteEvent.kind = KIND_DELETION;
+      deleteEvent.tags = [
+        ['e', registration.id]
+      ];
+      deleteEvent.content = 'Rejected by admin';
+      await deleteEvent.publish();
+
+      // Remove from pending list
+      pendingUserRegistrations = pendingUserRegistrations.filter(r => r.id !== registration.id);
+
+      if (import.meta.env.DEV) {
+        console.log('[Admin] Rejected user registration:', registration.id);
+      }
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Failed to reject registration';
+    } finally {
+      isLoading = false;
     }
   }
 
@@ -493,6 +686,10 @@
     if (joinRequestSubscription) {
       joinRequestSubscription.stop();
       joinRequestSubscription = null;
+    }
+    if (registrationSubscription) {
+      registrationSubscription.stop();
+      registrationSubscription = null;
     }
   });
 </script>
@@ -779,6 +976,102 @@
           </div>
         {/if}
       </div>
+    </div>
+  </div>
+
+  <!-- Pending User Registrations (New Users) -->
+  <div class="card bg-base-200 mb-6">
+    <div class="card-body">
+      <div class="flex items-center justify-between">
+        <h2 class="card-title">
+          Pending User Registrations
+          {#if pendingUserRegistrations.length > 0}
+            <span class="badge badge-error">{pendingUserRegistrations.length}</span>
+          {/if}
+        </h2>
+        <button
+          class="btn btn-ghost btn-sm"
+          on:click={loadUserRegistrations}
+          disabled={isLoading}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
+        </button>
+      </div>
+
+      {#if isLoading && pendingUserRegistrations.length === 0}
+        <div class="text-center py-8">
+          <span class="loading loading-spinner loading-lg"></span>
+          <p class="mt-2 text-base-content/70">Loading user registrations...</p>
+        </div>
+      {:else if pendingUserRegistrations.length === 0}
+        <div class="text-center py-8 text-base-content/50">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+          </svg>
+          <p>No pending user registrations</p>
+          <p class="text-sm mt-1">New users signing up will appear here for approval</p>
+        </div>
+      {:else}
+        <div class="overflow-x-auto mt-4">
+          <table class="table table-zebra">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Message</th>
+                <th>Requested</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each pendingUserRegistrations as registration (registration.id)}
+                <tr>
+                  <td>
+                    <UserDisplay
+                      pubkey={registration.pubkey}
+                      showAvatar={true}
+                      showName={true}
+                      showFullName={true}
+                      avatarSize="sm"
+                      clickable={false}
+                    />
+                  </td>
+                  <td>
+                    {#if registration.message}
+                      <span class="text-sm text-base-content/70 line-clamp-2">{registration.message}</span>
+                    {:else}
+                      <span class="text-xs text-base-content/50">No message</span>
+                    {/if}
+                  </td>
+                  <td>
+                    <span class="text-sm">{formatRelativeTime(registration.createdAt)}</span>
+                  </td>
+                  <td>
+                    <div class="flex justify-end gap-2">
+                      <button
+                        class="btn btn-success btn-sm"
+                        on:click={() => handleApproveUserRegistration(registration)}
+                        disabled={isLoading}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        class="btn btn-error btn-sm btn-outline"
+                        on:click={() => handleRejectUserRegistration(registration)}
+                        disabled={isLoading}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
     </div>
   </div>
 

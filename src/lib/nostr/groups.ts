@@ -27,6 +27,7 @@ export const KIND_ADD_USER = 9000;
 export const KIND_REMOVE_USER = 9001;
 export const KIND_DELETE_EVENT = 9005;
 export const KIND_JOIN_REQUEST = 9021; // Custom kind for join requests
+export const KIND_USER_REGISTRATION = 9024; // User registration request (new user wants system access)
 
 // Standard deletion kind (NIP-09)
 export const KIND_DELETION = 5;
@@ -63,6 +64,18 @@ export interface JoinRequest {
   channelId: string;
   createdAt: number;
   status: 'pending' | 'approved' | 'rejected';
+  message?: string;
+}
+
+/**
+ * User registration request structure
+ */
+export interface UserRegistrationRequest {
+  id: string;
+  pubkey: string;
+  createdAt: number;
+  status: 'pending' | 'approved' | 'rejected';
+  displayName?: string;
   message?: string;
 }
 
@@ -104,6 +117,58 @@ export async function requestJoin(
         ['h', channelId],
       ],
       content: message || '',
+    };
+
+    const signed = finalizeEvent(event, privateKey);
+    await relay.publish(signed);
+
+    return {
+      success: true,
+      eventId: signed.id,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Request user registration (new user wants system access)
+ *
+ * Creates a kind 9024 event to request system access.
+ * Admin will see this in the pending registrations list.
+ *
+ * @param privateKey - User's private key (hex string)
+ * @param relay - Connected relay instance
+ * @param displayName - Optional display name for the request
+ * @param message - Optional message to include with request
+ * @returns Promise resolving to publish result
+ */
+export async function requestRegistration(
+  privateKey: string,
+  relay: Relay,
+  displayName?: string,
+  message?: string
+): Promise<PublishResult> {
+  try {
+    const pubkey = getPublicKey(privateKey);
+
+    const tags: string[][] = [
+      ['t', 'registration'], // Tag for filtering
+    ];
+
+    if (displayName) {
+      tags.push(['name', displayName]);
+    }
+
+    const event: Event = {
+      kind: KIND_USER_REGISTRATION,
+      pubkey,
+      created_at: Math.floor(Date.now() / 1000),
+      tags,
+      content: message || 'New user registration request',
     };
 
     const signed = finalizeEvent(event, privateKey);

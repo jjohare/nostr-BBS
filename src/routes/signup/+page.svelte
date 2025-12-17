@@ -2,17 +2,19 @@
   import Signup from '$lib/components/auth/Signup.svelte';
   import MnemonicDisplay from '$lib/components/auth/MnemonicDisplay.svelte';
   import KeyBackup from '$lib/components/auth/KeyBackup.svelte';
+  import NicknameSetup from '$lib/components/auth/NicknameSetup.svelte';
   import PendingApproval from '$lib/components/auth/PendingApproval.svelte';
   import { goto } from '$app/navigation';
   import { base } from '$app/paths';
   import { authStore } from '$lib/stores/auth';
-  import { checkWhitelistStatus } from '$lib/nostr/whitelist';
+  import { checkWhitelistStatus, publishRegistrationRequest } from '$lib/nostr/whitelist';
 
-  type FlowStep = 'signup' | 'mnemonic' | 'backup' | 'pending';
+  type FlowStep = 'signup' | 'mnemonic' | 'backup' | 'nickname' | 'pending';
   let step: FlowStep = 'signup';
   let mnemonic = '';
   let publicKey = '';
   let privateKey = '';
+  let nickname = '';
   let isApproved = false;
 
   function handleNext(event: CustomEvent<{ mnemonic: string; publicKey: string; privateKey: string }>) {
@@ -35,6 +37,13 @@
     await authStore.setKeys(publicKey, privateKey, mnemonic);
     authStore.confirmMnemonicBackup();
 
+    // Move to nickname setup step
+    step = 'nickname';
+  }
+
+  async function handleNicknameContinue(event: CustomEvent<{ nickname: string }>) {
+    nickname = event.detail.nickname;
+
     // Check if user is pre-approved (admin or on whitelist)
     const whitelistStatus = await checkWhitelistStatus(publicKey);
     isApproved = whitelistStatus.isApproved || whitelistStatus.isAdmin;
@@ -43,6 +52,16 @@
       // Skip pending approval for pre-approved users
       goto(`${base}/chat`);
     } else {
+      // Publish registration request so admin can see this user
+      try {
+        const result = await publishRegistrationRequest(privateKey, nickname || undefined);
+        if (!result.success) {
+          console.warn('[Signup] Failed to publish registration request:', result.error);
+        }
+      } catch (error) {
+        console.warn('[Signup] Error publishing registration request:', error);
+      }
+
       // Show pending approval screen
       authStore.setPending(true);
       step = 'pending';
@@ -65,6 +84,8 @@
   <MnemonicDisplay {mnemonic} on:continue={handleMnemonicContinue} />
 {:else if step === 'backup'}
   <KeyBackup {publicKey} {mnemonic} on:continue={handleBackupContinue} />
+{:else if step === 'nickname'}
+  <NicknameSetup {publicKey} {privateKey} on:continue={handleNicknameContinue} />
 {:else if step === 'pending'}
   <PendingApproval {publicKey} on:approved={handleApproved} />
 {/if}

@@ -175,3 +175,113 @@ export async function checkWhitelistStatus(pubkey: string): Promise<{ isApproved
     isAdmin: status.isAdmin
   };
 }
+
+/**
+ * Publish a user registration request event
+ *
+ * Creates a kind 9024 event to announce a new user wants system access.
+ * Admin will see this in the pending registrations list.
+ *
+ * @param privateKey - User's private key (hex string)
+ * @param displayName - Optional display name
+ * @returns Promise resolving to success status
+ */
+export async function publishRegistrationRequest(
+  privateKey: string,
+  displayName?: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!browser) {
+    return { success: false, error: 'Not in browser environment' };
+  }
+
+  try {
+    // Dynamic import to avoid SSR issues
+    const { getNDK, connectNDK, setSigner } = await import('./ndk');
+    const { NDKEvent } = await import('@nostr-dev-kit/ndk');
+    const { KIND_USER_REGISTRATION } = await import('./groups');
+
+    // Set up signer and connect
+    setSigner(privateKey);
+    await connectNDK();
+
+    const ndk = getNDK();
+    if (!ndk.signer) {
+      return { success: false, error: 'Failed to set up signer' };
+    }
+
+    // Create registration request event
+    const event = new NDKEvent(ndk);
+    event.kind = KIND_USER_REGISTRATION;
+    event.content = 'New user registration request';
+    event.tags = [
+      ['t', 'registration'],
+    ];
+
+    if (displayName) {
+      event.tags.push(['name', displayName]);
+    }
+
+    // Sign and publish
+    await event.sign();
+    await event.publish();
+
+    if (import.meta.env.DEV) {
+      console.log('[Registration] Published registration request:', event.id);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('[Registration] Failed to publish registration request:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * Approve a user registration via relay API
+ *
+ * Adds the user to the whitelist with 'approved' cohort.
+ *
+ * @param pubkey - User's public key to approve
+ * @param adminPubkey - Admin's public key (for authorization)
+ * @returns Promise resolving to success status
+ */
+export async function approveUserRegistration(
+  pubkey: string,
+  adminPubkey: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const httpUrl = getRelayHttpUrl();
+    const response = await fetch(`${httpUrl}/api/whitelist/add`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pubkey,
+        cohorts: ['approved'],
+        adminPubkey,
+      }),
+    });
+
+    if (response.ok) {
+      // Clear cache to force re-check
+      clearWhitelistCache(pubkey);
+      return { success: true };
+    }
+
+    const errorData = await response.json().catch(() => ({}));
+    return {
+      success: false,
+      error: errorData.error || `HTTP ${response.status}`
+    };
+  } catch (error) {
+    console.error('[Whitelist] Failed to approve registration:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
