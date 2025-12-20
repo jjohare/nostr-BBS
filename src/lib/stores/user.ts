@@ -31,6 +31,7 @@ export interface UserProfile {
   lud16: string | null; // Lightning address
   website: string | null;
   banner: string | null;
+  birthday: string | null; // Optional birthday in YYYY-MM-DD format
   createdAt: number | null;
   updatedAt: number | null;
 }
@@ -61,6 +62,7 @@ function createDefaultProfile(pubkey: string): UserProfile {
     lud16: null,
     website: null,
     banner: null,
+    birthday: null,
     createdAt: null,
     updatedAt: null
   };
@@ -130,6 +132,7 @@ export const userStore: Readable<UserState> = derived(
             lud16: cachedProfile.profile?.lud16 ?? null,
             website: cachedProfile.profile?.website ?? null,
             banner: cachedProfile.profile?.banner ?? null,
+            birthday: (cachedProfile.profile as any)?.birthday ?? null,
             isAdmin: whitelistStatus.isAdmin,
             isApproved: whitelistStatus.isWhitelisted,
             cohorts,

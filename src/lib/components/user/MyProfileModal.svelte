@@ -4,6 +4,7 @@
 	import { encodePubkey, encodePrivkey } from '$lib/nostr/keys';
 	import { ndk, connectNDK, setSigner, hasSigner } from '$lib/nostr/ndk';
 	import { NDKEvent } from '@nostr-dev-kit/ndk';
+	import { browser } from '$app/environment';
 
 	export let open = false;
 
@@ -13,6 +14,7 @@
 	let copiedNsec = false;
 	let editNickname = '';
 	let editAvatar = '';
+	let editBirthday = '';
 	let profileSaved = false;
 	let profileSaving = false;
 	let profileError: string | null = null;
@@ -26,7 +28,14 @@
 	$: if (open && !lastModalState) {
 		editNickname = $authStore.nickname || '';
 		editAvatar = $authStore.avatar || '';
+		editBirthday = '';
 		previousFocusElement = document.activeElement as HTMLElement;
+		// Load birthday from profile cache
+		if (browser && $authStore.publicKey) {
+			profileCache.getProfile($authStore.publicKey).then(cached => {
+				editBirthday = (cached.profile as any)?.birthday || '';
+			});
+		}
 	}
 	$: lastModalState = open;
 
@@ -91,6 +100,7 @@
 				name: editNickname || undefined,
 				display_name: editNickname || undefined,
 				picture: editAvatar || undefined,
+				birthday: editBirthday || undefined,
 			});
 
 			// Sign and publish to relay
@@ -202,7 +212,7 @@
 			</div>
 
 			<!-- Avatar URL -->
-			<div class="form-control mb-4">
+			<div class="form-control mb-3">
 				<label class="label py-1">
 					<span class="label-text font-semibold">Avatar URL</span>
 				</label>
@@ -214,6 +224,22 @@
 				/>
 				<label class="label py-1">
 					<span class="label-text-alt text-base-content/60">Direct link to an image</span>
+				</label>
+			</div>
+
+			<!-- Birthday (Optional) -->
+			<div class="form-control mb-4">
+				<label class="label py-1">
+					<span class="label-text font-semibold">Birthday</span>
+					<span class="label-text-alt text-base-content/60">Optional</span>
+				</label>
+				<input
+					type="date"
+					bind:value={editBirthday}
+					class="input input-bordered input-sm"
+				/>
+				<label class="label py-1">
+					<span class="label-text-alt text-base-content/60">Visible to tribe members on the calendar</span>
 				</label>
 			</div>
 

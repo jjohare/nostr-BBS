@@ -37,7 +37,7 @@ Comprehensive end-to-end tests using Playwright for testing the Nostr-BBS chat a
    - Receive messages
    - Delete own messages
    - Message timestamps
-   - Auto-scroll behavior
+   - Auto-scroll behaviour
    - Keyboard shortcuts (Enter to send)
 
 ### Fixtures
@@ -107,7 +107,7 @@ Configuration is in `playwright.config.ts`:
 ### Environment Variables
 
 - `BASE_URL` - Override base URL for tests
-- `CI` - Set to enable CI-specific behavior
+- `CI` - Set to enable CI-specific behaviour
 
 ## Mock Relay
 

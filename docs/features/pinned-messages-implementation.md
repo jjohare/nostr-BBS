@@ -1,3 +1,11 @@
+---
+title: Pinned Messages Implementation
+description: Implementation of message pinning functionality for highlighting important channel messages
+category: reference
+tags: [chat, channels, components]
+difficulty: intermediate
+---
+
 [← Back to Main README](../README.md)
 
 # Pinned Messages Implementation (Phase 1.5)
@@ -147,7 +155,7 @@ interface PinnedMessagesState {
   - Max limit enforcement
   - Scroll-to-message
   - Persistence across page reloads
-  - Collapse/expand behavior
+  - Collapse/expand behaviour
 
 ## File Paths (Absolute)
 - `/home/devuser/workspace/Nostr-BBS-nostr/src/lib/stores/pinnedMessages.ts`

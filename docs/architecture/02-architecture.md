@@ -1,3 +1,18 @@
+---
+title: Nostr-BBS SPARC Architecture
+description: System architecture design for Nostr-BBS including component diagrams, data flow, and technical infrastructure
+category: explanation
+tags: [architecture, sparc-methodology, serverless, pwa]
+difficulty: intermediate
+version: 0.1.0-draft
+date: 2024-12-11
+status: active
+related-docs:
+  - docs/architecture/01-specification.md
+  - docs/architecture/03-pseudocode.md
+  - README.md
+---
+
 [← Back to Main README](../../README.md)
 
 # Nostr-BBS - SPARC Architecture
@@ -44,7 +59,123 @@ graph TB
 
 ---
 
-## 2. Component Architecture
+## 2. Message Lifecycle & Data Flow
+
+### 2.1 Complete Message Flow (Creation to Delivery)
+
+```mermaid
+sequenceDiagram
+    participant U as User (PWA)
+    participant UI as UI Components
+    participant NDK as NDK Library
+    participant WS as WebSocket
+    participant R as Relay Worker
+    participant DO as Durable Objects
+    participant SUB as Subscribers
+
+    Note over U,SUB: Message Creation & Publishing Flow
+
+    U->>UI: 1. Type message in input
+    UI->>UI: 2. Validate content (length, format)
+    UI->>NDK: 3. Create channel message
+
+    Note over NDK: Event Construction
+    NDK->>NDK: 4. Build event object (kind 9)
+    NDK->>NDK: 5. Add channel tag ('h', channelId)
+    NDK->>NDK: 6. Add timestamp (created_at)
+    NDK->>NDK: 7. Sign with privkey (NIP-01)
+
+    NDK->>WS: 8. Publish via WebSocket
+    Note over WS: ["EVENT", {event}]
+
+    WS->>R: 9. Relay receives event
+
+    Note over R: NIP-42 Authentication
+    R->>R: 10. Verify event signature
+    R->>R: 11. Check pubkey in whitelist
+    R->>R: 12. Validate channel membership
+
+    alt User not authorized
+        R->>WS: 13a. NOTICE: Auth failed
+        WS->>UI: 14a. Show error
+    else User authorized
+        R->>DO: 13b. Store event
+
+        Note over DO: Durable Objects Storage
+        DO->>DO: 14b. Write to LMDB
+        DO->>DO: 15b. Update channel index
+        DO->>DO: 16b. Update user message count
+
+        R->>SUB: 17. Broadcast to subscribers
+        Note over SUB: All connected clients<br/>subscribed to channel
+
+        SUB->>SUB: 18. Update message list
+        SUB->>SUB: 19. Render new message
+
+        R->>WS: 20. OK response
+        WS->>UI: 21. Message confirmed
+        UI->>U: 22. Show success (green checkmark)
+    end
+
+    Note over U,SUB: ✅ Message delivered to all members
+```
+
+**Key Steps Explained:**
+
+| Step | Layer | Description |
+|------|-------|-------------|
+| 1-3 | Client | User types message, UI validates, sends to NDK |
+| 4-7 | NDK | Event creation: build, tag, timestamp, sign |
+| 8-9 | Transport | WebSocket transmission to relay |
+| 10-12 | Relay | NIP-42 AUTH: verify signature, whitelist, membership |
+| 13-16 | Storage | Durable Objects: persist event, update indexes |
+| 17-19 | Distribution | Broadcast to all channel subscribers |
+| 20-22 | Confirmation | Relay confirms, UI shows success |
+
+### 2.2 Deletion Flow (NIP-09 + NIP-29)
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as UI
+    participant NDK as NDK
+    participant R as Relay
+    participant DO as Durable Objects
+    participant SUB as Subscribers
+
+    U->>UI: Click "Delete" on message
+    UI->>UI: Confirm deletion
+
+    alt User's own message
+        UI->>NDK: Create deletion event (kind 5)
+        Note over NDK: NIP-09 deletion
+        NDK->>NDK: Add 'e' tag (event ID to delete)
+        NDK->>NDK: Sign with user's privkey
+    else Admin deletion
+        UI->>NDK: Create admin deletion (kind 9005)
+        Note over NDK: NIP-29 admin action
+        NDK->>NDK: Add 'h' tag (channel ID)
+        NDK->>NDK: Add 'e' tag (event ID)
+        NDK->>NDK: Sign with admin privkey
+    end
+
+    NDK->>R: Publish deletion event
+    R->>R: Verify deletion authority
+    R->>DO: Mark event as deleted
+    DO->>DO: Update deletion index
+
+    R->>SUB: Broadcast deletion
+    SUB->>SUB: Remove message from UI
+
+    style NDK fill:#FFB6C1,stroke:#333
+    style DO fill:#90EE90,stroke:#333
+```
+
+**Text Alternative:** User initiates deletion. For own messages, creates NIP-09 deletion event (kind 5). For admin deletions, creates NIP-29 moderation event (kind 9005). Relay verifies authority, marks event as deleted in Durable Objects, broadcasts deletion to all subscribers who remove the message from their UI.
+
+---
+
+## 3. Component Architecture
 
 ### 2.1 Frontend Components
 
@@ -421,7 +552,7 @@ async function deleteMessage(eventId: string, privkey: string) {
   const signed = await signEvent(deletionEvent, privkey);
   await relay.publish(signed);
 
-  // Local relay WILL honor deletion
+  // Local relay WILL honour deletion
   // (configured to respect NIP-09 from event author)
 }
 
@@ -453,7 +584,7 @@ flowchart LR
     RelayB -.->|"???"| RelayC
 ```
 
-*Problem: No guarantee other relays honor deletion*
+*Problem: No guarantee other relays honour deletion*
 
 **Nostr-BBS (Closed Relay)**
 

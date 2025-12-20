@@ -1244,7 +1244,7 @@ This project builds upon exceptional open-source work from the Nostr ecosystem a
 - **[Transformers.js](https://huggingface.co/docs/transformers.js)** - Machine learning models by Hugging Face
 - **[sentence-transformers](https://www.sbert.net/)** - Multilingual sentence embeddings
 - **[all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)** - Compact 384d embedding model
-- **[hnswlib](https://github.com/nmslib/hnswlib)** - Fast approximate nearest neighbor search
+- **[hnswlib](https://github.com/nmslib/hnswlib)** - Fast approximate nearest neighbour search
 - **[hnswlib-wasm](https://github.com/yoshoku/hnswlib-wasm)** - WASM-based vector similarity search
 
 ### Infrastructure & Cloud Services

@@ -184,7 +184,7 @@ Comprehensive test suites for the semantic search module with 100+ test cases co
 - Test table isolation
 - Test data persistence
 - Test concurrent access patterns
-- Test transaction behavior
+- Test transaction behaviour
 
 **Key Test Patterns**:
 - Dexie version migration

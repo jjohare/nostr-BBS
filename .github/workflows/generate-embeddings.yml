@@ -7,7 +7,7 @@ name: Generate Note Embeddings
 #
 # Required GitHub Variables (Settings -> Secrets and variables -> Actions -> Variables):
 # - RELAY_URL: WebSocket URL of the Nostr relay (e.g., wss://nosflare-relay-xxx.run.app)
-#              Fallback: wss://nosflare-relay-PLACEHOLDER.run.app
+#              REQUIRED: Must be set before first run. Workflow will fail without this variable.
 
 on:
   schedule:

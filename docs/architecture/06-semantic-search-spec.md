@@ -1,3 +1,18 @@
+---
+title: Nostr-BBS Semantic Vector Search Specification
+description: Specification for AI-powered semantic search feature enabling natural language message discovery across Nostr-BBS
+category: reference
+tags: [semantic-search, specification, search, architecture]
+difficulty: advanced
+version: 0.1.0-draft
+date: 2024-12-14
+status: active
+related-docs:
+  - docs/architecture/07-semantic-search-architecture.md
+  - docs/architecture/08-semantic-search-pseudocode.md
+  - docs/features/search-implementation.md
+---
+
 [← Back to Main README](../../README.md)
 
 # Nostr-BBS - Semantic Vector Search Specification
@@ -629,7 +644,7 @@ When index is unavailable:
 
 | Term | Definition |
 |------|------------|
-| **HNSW** | Hierarchical Navigable Small World - fast approximate nearest neighbor search |
+| **HNSW** | Hierarchical Navigable Small World - fast approximate nearest neighbour search |
 | **Embedding** | Numerical vector representation of text (384 dimensions) |
 | **Quantization** | Converting float32 to int8 to reduce storage (75% compression) |
 | **R2** | Cloudflare object storage (S3-compatible) |

@@ -1,3 +1,11 @@
+---
+title: NIP-25 Reactions Implementation
+description: Implementation of emoji reactions to messages using NIP-25 protocol specification
+category: reference
+tags: [nip-25, reactions, nostr-protocol]
+difficulty: intermediate
+---
+
 [← Back to Main README](../README.md)
 
 # NIP-25 Message Reactions Implementation

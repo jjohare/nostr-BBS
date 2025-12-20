@@ -68,6 +68,10 @@
     });
   }
 
+  function isBirthdayEvent(event: CalendarEvent): boolean {
+    return event.id.startsWith('birthday-') || (event.tags?.includes('birthday') ?? false);
+  }
+
   function isToday(date: Date): boolean {
     const today = new Date();
     return (
@@ -195,9 +199,16 @@
               <div class="mt-1 space-y-0.5">
                 {#each dayEvents.slice(0, 3) as event}
                   <button
-                    class="block w-full text-left text-xs px-1 py-0.5 rounded truncate bg-primary/20 text-primary hover:bg-primary/30"
+                    class="block w-full text-left text-xs px-1 py-0.5 rounded truncate hover:opacity-80"
+                    class:bg-pink-500/20={isBirthdayEvent(event)}
+                    class:text-pink-600={isBirthdayEvent(event)}
+                    class:bg-primary/20={!isBirthdayEvent(event)}
+                    class:text-primary={!isBirthdayEvent(event)}
                     on:click|stopPropagation={() => handleEventClick(event)}
                   >
+                    {#if isBirthdayEvent(event)}
+                      <span class="mr-0.5">🎂</span>
+                    {/if}
                     {event.title}
                   </button>
                 {/each}

@@ -1,3 +1,14 @@
+---
+title: NIP-17/NIP-59 Gift-Wrapped DM Implementation
+description: Complete implementation guide for privacy-preserving direct messages using NIP-17 sealed rumors and NIP-59 gift wrapping
+category: reference
+tags: [direct-messages, nip-17, nip-59, encryption, privacy]
+difficulty: advanced
+related-docs:
+  - README.md
+  - docs/architecture/01-specification.md
+---
+
 # NIP-17/NIP-59 Gift-Wrapped DM Implementation
 
 [Back to Main README](../README.md)

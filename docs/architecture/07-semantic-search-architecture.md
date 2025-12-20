@@ -1,3 +1,18 @@
+---
+title: Nostr-BBS Semantic Vector Search Architecture
+description: Complete architecture design for the semantic search embedding pipeline and client-side WASM search
+category: explanation
+tags: [semantic-search, architecture, pwa, serverless]
+difficulty: advanced
+version: 0.1.0-draft
+date: 2024-12-14
+status: active
+related-docs:
+  - docs/architecture/06-semantic-search-spec.md
+  - docs/architecture/08-semantic-search-pseudocode.md
+  - docs/features/search-implementation.md
+---
+
 [← Back to Main README](../../README.md)
 
 # Nostr-BBS - Semantic Vector Search Architecture
@@ -936,7 +951,7 @@ sequenceDiagram
         IDB->>UI: Return index
 
         UI->>HNSW: searchKnn(query_vector, k=10)
-        HNSW->>UI: Return neighbor indices + distances
+        HNSW->>UI: Return neighbour indices + distances
 
         UI->>IDB: Get metadata for indices
         IDB->>UI: Return note IDs, previews
@@ -972,7 +987,7 @@ sequenceDiagram
 |-------|------------|---------|-----------|
 | Runtime | Python | 3.11 | sentence-transformers ecosystem |
 | Embedding Model | sentence-transformers/all-MiniLM-L6-v2 | - | 384-dim, 120MB, good speed/quality |
-| Vector Index | hnswlib (Python) | 0.8.0 | Fast approximate nearest neighbor |
+| Vector Index | hnswlib (Python) | 0.8.0 | Fast approximate nearest neighbour |
 | Quantization | NumPy | 1.26 | int8 conversion (4x size reduction) |
 | Nostr Client | nostr-sdk (Python) | 0.24 | Relay connection for note fetching |
 | Storage Client | boto3 | 1.34 | S3-compatible R2 upload |

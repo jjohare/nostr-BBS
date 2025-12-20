@@ -233,7 +233,7 @@ Observed latency increases with input text length, as expected for transformer-b
 
 5. **Implement Request Queueing**
    - **Strategy:** Queue burst requests instead of spawning instances
-   - **Benefit:** More predictable scaling behavior
+   - **Benefit:** More predictable scaling behaviour
    - **Tool:** Cloud Tasks or Pub/Sub
 
 ### Long-term Enhancements (Low Priority)

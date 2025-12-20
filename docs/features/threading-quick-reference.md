@@ -147,8 +147,8 @@ function buildReplyTags(parentMessage: Message): string[][] {
 function scrollToMessage(messageId: string) {
   const element = document.getElementById(`message-${messageId}`);
   element?.scrollIntoView({
-    behavior: 'smooth',
-    block: 'center'
+    behaviour: 'smooth',
+    block: 'centre'
   });
 }
 ```

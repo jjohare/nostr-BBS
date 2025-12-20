@@ -696,7 +696,7 @@ onDestroy(() => {
 const response = await fetch(`${R2_BASE_URL}/latest/manifest.json`, {
   cache: 'no-cache'
 });
-// ❌ No CORS mode specified, relies on default behavior
+// ❌ No CORS mode specified, relies on default behaviour
 ```
 
 **Fix:**

@@ -77,9 +77,28 @@ export interface SectionAccessRequest {
 	status: SectionAccessStatus;
 }
 
+/**
+ * Recurrence pattern for events
+ */
+export type RecurrencePattern = 'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly';
+
+/**
+ * Event metadata for posts marked as events
+ */
+export interface EventMetadata {
+	isEvent: true;
+	startDate: number; // Unix timestamp
+	endDate: number; // Unix timestamp
+	location?: string;
+	recurrence: RecurrencePattern;
+	recurrenceEnd?: number; // When recurrence stops (Unix timestamp)
+	timezone?: string;
+}
+
 export interface Message {
 	id: string;
 	channelId: string;
+	sectionId?: ChannelSection; // Section for section-level events
 	authorPubkey: string;
 	content: string;
 	createdAt: number;
@@ -88,6 +107,7 @@ export interface Message {
 	tags?: string[][];
 	replyTo?: string;
 	quotedMessages?: string[];
+	event?: EventMetadata; // Optional event data
 }
 
 export interface JoinRequest {

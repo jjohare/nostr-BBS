@@ -1,3 +1,17 @@
+---
+title: Nostr-BBS SPARC Refinement & Technology Selection
+description: Technology stack decisions, TDD planning, and implementation refinement for Nostr-BBS
+category: reference
+tags: [refinement, sparc-methodology, pwa, testing]
+difficulty: intermediate
+version: 0.1.0-draft
+date: 2024-12-11
+status: active
+related-docs:
+  - docs/architecture/03-pseudocode.md
+  - docs/architecture/05-completion.md
+---
+
 [← Back to Main README](../../README.md)
 
 # Nostr-BBS Nostr - SPARC Refinement & Technology Selection

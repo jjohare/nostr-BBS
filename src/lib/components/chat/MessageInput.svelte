@@ -10,7 +10,8 @@
   import { ndk, publishEvent, isConnected } from '$lib/nostr/relay';
   import { KIND_GROUP_CHAT_MESSAGE } from '$lib/nostr/groups';
   import MentionAutocomplete from './MentionAutocomplete.svelte';
-  import type { Message } from '$lib/types/channel';
+  import EventInput from '$lib/components/events/EventInput.svelte';
+  import type { Message, EventMetadata } from '$lib/types/channel';
   import type { UserProfile } from '$lib/stores/user';
 
   let messageText = '';
@@ -25,6 +26,11 @@
   let mentionStartIndex = -1;
   let autocompletePosition = { top: 0, left: 0 };
   let availableUsers: UserProfile[] = [];
+
+  // Event post state
+  let isEvent = false;
+  let eventData: EventMetadata | null = null;
+  let showEventInput = false;
 
   $: canSend = $userMemberStatus === 'member' || $userMemberStatus === 'admin';
   $: placeholder = canSend
@@ -221,6 +227,25 @@
         ...mentionTags
       ];
 
+      // Add event metadata tags if this is an event post
+      if (isEvent && eventData) {
+        messageEvent.tags.push(['event', 'true']);
+        messageEvent.tags.push(['event_start', eventData.startDate.toString()]);
+        messageEvent.tags.push(['event_end', eventData.endDate.toString()]);
+        if (eventData.location) {
+          messageEvent.tags.push(['event_location', eventData.location]);
+        }
+        if (eventData.recurrence !== 'none') {
+          messageEvent.tags.push(['event_recurrence', eventData.recurrence]);
+          if (eventData.recurrenceEnd) {
+            messageEvent.tags.push(['event_recurrence_end', eventData.recurrenceEnd.toString()]);
+          }
+        }
+        if (eventData.timezone) {
+          messageEvent.tags.push(['event_timezone', eventData.timezone]);
+        }
+      }
+
       const published = await publishEvent(messageEvent);
 
       if (!published) {
@@ -235,7 +260,8 @@
         content: content,
         createdAt: Date.now(),
         isEncrypted: $selectedChannel.isEncrypted,
-        decryptedContent: $selectedChannel.isEncrypted ? content : undefined
+        decryptedContent: $selectedChannel.isEncrypted ? content : undefined,
+        event: isEvent && eventData ? eventData : undefined
       };
 
       channelStore.addMessage(message);
@@ -264,6 +290,13 @@
       // Clear draft after successful send
       draftStore.clearDraft(channelId);
       hasDraft = false;
+
+      // Reset event state after send
+      if (isEvent) {
+        isEvent = false;
+        eventData = null;
+        showEventInput = false;
+      }
 
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -379,6 +412,21 @@
     on:cancel={handleMentionCancel}
   />
 
+  <!-- Event Input Panel -->
+  {#if showEventInput}
+    <div class="mb-3">
+      <EventInput
+        bind:isEvent
+        compact={true}
+        on:change={(e) => (eventData = e.detail)}
+        on:toggle={(e) => {
+          isEvent = e.detail;
+          if (!e.detail) showEventInput = false;
+        }}
+      />
+    </div>
+  {/if}
+
   <div class="flex gap-2 items-end message-input-toolbar">
     <div class="flex-1 textarea-wrapper">
       <textarea
@@ -409,12 +457,30 @@
       </div>
     </div>
 
+    <!-- Event Toggle Button -->
+    <button
+      class="btn btn-square min-h-11 min-w-11"
+      class:btn-secondary={showEventInput || isEvent}
+      class:btn-ghost={!showEventInput && !isEvent}
+      on:click={() => {
+        showEventInput = !showEventInput;
+        if (showEventInput && !isEvent) isEvent = true;
+      }}
+      disabled={!canSend}
+      aria-label="Create event"
+      title="Create event post"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    </button>
+
     <button
       class="btn btn-primary btn-square min-h-11 min-w-11 send-button"
       on:click={sendMessage}
-      disabled={!messageText.trim() || !canSend || isSending}
+      disabled={!messageText.trim() || !canSend || isSending || (isEvent && !eventData?.startDate)}
       aria-label="Send message"
-      title="Send message"
+      title={isEvent ? 'Create event' : 'Send message'}
     >
       {#if isSending}
         <span class="loading loading-spinner loading-sm"></span>
