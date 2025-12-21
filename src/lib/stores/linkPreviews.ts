@@ -302,10 +302,10 @@ function decodeHtmlEntities(text: string): string {
 		'&mdash;': '—',
 		'&ndash;': '–',
 		'&hellip;': '…',
-		'&lsquo;': '\u2018',
-		'&rsquo;': '\u2019',
-		'&ldquo;': '\u201C',
-		'&rdquo;': '\u201D',
+		'&lsquo;': ''',
+		'&rsquo;': ''',
+		'&ldquo;': '"',
+		'&rdquo;': '"',
 	};
 
 	// Replace named entities
