@@ -280,8 +280,8 @@
             {#each displayEvents as event (event.id)}
               <div
                 class="card bg-base-200 hover:bg-base-300 cursor-pointer transition-colors"
-                on:click={() => handleEventClick({ detail: event } as CustomEvent)}
-                on:keydown={(e) => e.key === 'Enter' && handleEventClick({ detail: event } as CustomEvent)}
+                on:click={() => handleEventClick(new CustomEvent('click', { detail: event }))}
+                on:keydown={(e) => e.key === 'Enter' && handleEventClick(new CustomEvent('click', { detail: event }))}
                 role="button"
                 tabindex="0"
               >
