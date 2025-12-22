@@ -96,78 +96,94 @@ export const userStore: Readable<UserState> = derived(
 
     // Load profile metadata and verify whitelist status from relay
     const loadProfile = async () => {
-      try {
-        if (browser && $auth.pubkey) {
-          // Fetch kind 0 metadata events from Nostr relays via profile cache
-          const cachedProfile = await profileCache.getProfile($auth.pubkey);
-
-          // Verify whitelist status from relay (SOURCE OF TRUTH)
-          const whitelistStatus = await verifyWhitelistStatus($auth.pubkey);
-          whitelistStatusStore.set(whitelistStatus);
-
-          // Map cohorts from whitelist status
-          const cohorts: CohortType[] = whitelistStatus.cohorts.map((cohortName): CohortType => {
-            // Map from CohortName to CohortType
-            const mapping: Record<string, CohortType> = {
-              freshman: 'freshman',
-              sophomore: 'sophomore',
-              junior: 'junior',
-              senior: 'senior',
-              graduate: 'graduate',
-              faculty: 'faculty',
-              staff: 'staff',
-              alumni: 'alumni'
-            };
-            return mapping[cohortName] || 'freshman';
-          });
-
-          // Merge relay metadata with whitelist status
-          const verifiedProfile: UserProfile = {
-            ...initialProfile,
-            name: cachedProfile.profile?.name ?? null,
-            displayName: cachedProfile.displayName,
-            avatar: cachedProfile.avatar,
-            about: cachedProfile.about,
-            nip05: cachedProfile.nip05,
-            lud16: cachedProfile.profile?.lud16 ?? null,
-            website: cachedProfile.profile?.website ?? null,
-            banner: cachedProfile.profile?.banner ?? null,
-            birthday: (cachedProfile.profile as any)?.birthday ?? null,
-            isAdmin: whitelistStatus.isAdmin,
-            isApproved: whitelistStatus.isWhitelisted,
-            cohorts,
-            createdAt: Date.now(),
-            updatedAt: Date.now()
-          };
-
-          set({
-            profile: verifiedProfile,
-            isLoading: false,
-            error: null
-          });
-
-          if (import.meta.env.DEV && $auth.pubkey) {
-            console.log('[User] Profile loaded from Nostr:', {
-              pubkey: $auth.pubkey.slice(0, 8) + '...',
-              displayName: verifiedProfile.displayName,
-              isAdmin: whitelistStatus.isAdmin,
-              cohorts: cohorts,
-              source: whitelistStatus.source
-            });
-          }
-        } else {
-          set({
-            profile: initialProfile,
-            isLoading: false,
-            error: null
-          });
-        }
-      } catch (error) {
-        console.warn('[User] Failed to load profile:', error);
+      if (!browser || !$auth.pubkey) {
         set({
           profile: initialProfile,
           isLoading: false,
-          error: error instanceof Error ? error.message : 'Failed to load profile'
+          error: null
+        });
+        return;
+      }
+
+      // ALWAYS verify whitelist status first - this MUST succeed for admin access
+      // Do this independently of profile fetch so errors don't block admin verification
+      let whitelistStatus: WhitelistStatus;
+      try {
+        whitelistStatus = await verifyWhitelistStatus($auth.pubkey);
+        whitelistStatusStore.set(whitelistStatus);
+        console.log('[User] Whitelist status verified:', {
+          pubkey: $auth.pubkey.slice(0, 8) + '...',
+          isAdmin: whitelistStatus.isAdmin,
+          source: whitelistStatus.source
+        });
+      } catch (whitelistError) {
+        console.warn('[User] Whitelist verification failed:', whitelistError);
+        // Create fallback status directly
+        whitelistStatus = {
+          isWhitelisted: false,
+          isAdmin: false,
+          cohorts: [],
+          verifiedAt: Date.now(),
+          source: 'fallback'
+        };
+        whitelistStatusStore.set(whitelistStatus);
+      }
+
+      // Map cohorts from whitelist status
+      const cohorts: CohortType[] = whitelistStatus.cohorts.map((cohortName): CohortType => {
+        const mapping: Record<string, CohortType> = {
+          freshman: 'freshman',
+          sophomore: 'sophomore',
+          junior: 'junior',
+          senior: 'senior',
+          graduate: 'graduate',
+          faculty: 'faculty',
+          staff: 'staff',
+          alumni: 'alumni'
+        };
+        return mapping[cohortName] || 'freshman';
+      });
+
+      // Now try to fetch profile data - this can fail without affecting admin status
+      let cachedProfile = null;
+      try {
+        cachedProfile = await profileCache.getProfile($auth.pubkey);
+      } catch (profileError) {
+        console.warn('[User] Profile fetch failed (non-fatal):', profileError);
+      }
+
+      // Merge profile data with whitelist status
+      const verifiedProfile: UserProfile = {
+        ...initialProfile,
+        name: cachedProfile?.profile?.name ?? null,
+        displayName: cachedProfile?.displayName ?? null,
+        avatar: cachedProfile?.avatar ?? null,
+        about: cachedProfile?.about ?? null,
+        nip05: cachedProfile?.nip05 ?? null,
+        lud16: cachedProfile?.profile?.lud16 ?? null,
+        website: cachedProfile?.profile?.website ?? null,
+        banner: cachedProfile?.profile?.banner ?? null,
+        birthday: (cachedProfile?.profile as any)?.birthday ?? null,
+        isAdmin: whitelistStatus.isAdmin,
+        isApproved: whitelistStatus.isWhitelisted,
+        cohorts,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+
+      set({
+        profile: verifiedProfile,
+        isLoading: false,
+        error: null
+      });
+
+      if (import.meta.env.DEV && $auth.pubkey) {
+        console.log('[User] Profile loaded from Nostr:', {
+          pubkey: $auth.pubkey.slice(0, 8) + '...',
+          displayName: verifiedProfile.displayName,
+          isAdmin: whitelistStatus.isAdmin,
+          cohorts: cohorts,
+          source: whitelistStatus.source
         });
       }
     };
