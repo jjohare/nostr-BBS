@@ -29,7 +29,7 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB max
     files: 2 // image + optional thumbnail
   },
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (_req: express.Request, file: { mimetype: string }, cb: (error: Error | null, acceptFile?: boolean) => void) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
@@ -250,7 +250,7 @@ app.post('/upload', upload.single('image'), async (req, res) => {
  */
 app.post('/upload-batch', upload.array('images', 10), async (req, res) => {
   try {
-    const files = req.files as Express.Multer.File[];
+    const files = req.files;
     if (!files || files.length === 0) {
       return res.status(400).json({ error: 'No image files provided' });
     }
