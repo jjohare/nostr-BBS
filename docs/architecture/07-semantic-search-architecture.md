@@ -1,6 +1,7 @@
 ---
 title: Nostr-BBS Semantic Vector Search Architecture
 description: Complete architecture design for the semantic search embedding pipeline and client-side WASM search
+last_updated: 2025-12-23
 category: explanation
 tags: [semantic-search, architecture, pwa, serverless]
 difficulty: advanced

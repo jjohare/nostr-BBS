@@ -1,6 +1,7 @@
 ---
 title: Semantic Vector Search Integration Risk Assessment
 description: Comprehensive risk analysis for semantic search implementation including dependency risks, scaling challenges, and mitigation strategies
+last_updated: 2025-12-23
 category: reference
 tags: [semantic-search, architecture, security, deployment]
 difficulty: advanced
@@ -2397,7 +2398,7 @@ describe('Vector Search Security', () => {
 1. **Mobile Optimization** (Week 9)
    - [ ] Test on iOS Safari, Android Chrome
    - [ ] Implement progressive loading
-   - [ ] Memory usage optimization
+   - [ ] Memory usage optimisation
    - [ ] 3G network testing
 
 2. **Performance Tuning** (Week 9-10)
@@ -2479,7 +2480,7 @@ The Semantic Vector Search feature is **TECHNICALLY FEASIBLE** but carries **MOD
 
 **P1 (Should Fix in v1.1):**
 1. Index corruption recovery
-2. Mobile optimization
+2. Mobile optimisation
 3. Progressive embedding download
 4. Storage quota monitoring
 
@@ -2507,3 +2508,25 @@ The Semantic Vector Search feature is **TECHNICALLY FEASIBLE** but carries **MOD
 **Document Version:** 1.0
 **Last Updated:** 2025-12-14
 **Next Review:** After Phase 0 validation (Week 2)
+
+---
+
+## Related Documentation
+
+### Architecture Documentation
+- [Semantic Search Specification](06-semantic-search-spec.md) - Requirements and design goals
+- [Semantic Search Architecture](07-semantic-search-architecture.md) - System design and components
+- [Semantic Search Pseudocode](08-semantic-search-pseudocode.md) - Algorithm implementation details
+- [System Architecture](02-architecture.md) - Overall Nostr-BBS system design
+
+### Implementation Guides
+- [Search Implementation](../features/search-implementation.md) - Implementation details for search features
+- [Search Usage Guide](../features/search-usage-guide.md) - User guide for search functionality
+
+### Deployment & Operations
+- [GCP Architecture](../deployment/gcp-architecture.md) - Cloud Run deployment for embedding service
+- [GCP Deployment Guide](../deployment/GCP_DEPLOYMENT.md) - Step-by-step deployment instructions
+
+---
+
+[← Back to Architecture Documentation](02-architecture.md) | [← Back to Documentation Hub](../INDEX.md)

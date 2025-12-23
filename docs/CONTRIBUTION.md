@@ -1,9 +1,10 @@
 ---
 title: Documentation Contribution Guidelines
 description: Guidelines for contributing to project documentation
-status: approved
-last_updated: 2025-12-20
 category: guide
+tags: [contribution, documentation, guide]
+last_updated: 2025-12-23
+status: approved
 difficulty: beginner
 ---
 
@@ -281,8 +282,8 @@ npm test
 Use descriptive link text:
 
 ```markdown
-✅ See the [deployment guide](./deployment/DEPLOYMENT.md)
-❌ See [this guide](./deployment/DEPLOYMENT.md)
+✅ See the [deployment guide](./deployment/deployment-guide.md)
+❌ See [this guide](./deployment/deployment-guide.md)
 
 ✅ Learn more about [NIP-29 moderation](https://github.com/nostr-protocol/nips/blob/master/29.md)
 ❌ Click [here](https://github.com/nostr-protocol/nips/blob/master/29.md) for more info

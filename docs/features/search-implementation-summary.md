@@ -1,6 +1,7 @@
 ---
 title: Search Index Implementation Summary
 description: Implementation summary of client-side full-text search using IndexedDB with real-time indexing and relevance scoring
+last_updated: 2025-12-23
 category: reference
 tags: [features, search, development]
 ---
@@ -329,7 +330,7 @@ await indexNewMessage(message);
 1. **Encrypted Messages**: Only decrypted content is indexed
 2. **Deleted Messages**: Removed from index immediately
 3. **Cross-device**: Index is local to each device
-4. **Language Support**: English-optimized stop words
+4. **Language Support**: English-optimised stop words
 5. **Special Characters**: Normalized during tokenization
 
 ## Migration Notes
@@ -400,4 +401,4 @@ npm run test -- tests/searchIndex.test.ts
 
 The search implementation provides a production-ready, performant full-text search system for the Nostr-BBS Nostr application. It scales to 1000+ messages with sub-second search times, provides rich filtering and ranking, and integrates seamlessly with the existing message flow.
 
-All code follows the existing project patterns, uses TypeScript for type safety, and includes comprehensive error handling. The implementation is optimized for both user experience (fast, responsive) and developer experience (well-documented, testable).
+All code follows the existing project patterns, uses TypeScript for type safety, and includes comprehensive error handling. The implementation is optimised for both user experience (fast, responsive) and developer experience (well-documented, testable).

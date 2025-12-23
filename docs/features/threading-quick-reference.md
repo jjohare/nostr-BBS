@@ -1,6 +1,7 @@
 ---
 title: Threading Quick Reference
 description: Quick reference guide for implementing and using message threading features
+last_updated: 2025-12-23
 category: howto
 tags: [features, messages, development]
 ---
@@ -254,3 +255,25 @@ See `/examples/` directory:
 
 - `/docs/threading-implementation.md` - Complete implementation guide
 - `/docs/phase-2.2-threading-summary.md` - Feature summary
+
+---
+
+## Related Documentation
+
+### Feature Guides
+- [PWA Quick Start](pwa-quick-start.md) - Progressive Web App installation
+- [Search Implementation](search-implementation.md) - Semantic search features
+- [Threading Implementation](threading-implementation.md) - Conversation threading
+- [DM Implementation](dm-implementation.md) - Direct messaging system
+
+### Architecture
+- [System Architecture](../architecture/02-architecture.md) - Overall system design
+- [NIP Protocol Reference](../reference/nip-protocol-reference.md) - Nostr protocol specs
+
+### User Guides
+- [Getting Started](../INDEX.md#getting-started) - Quick start guides for new users
+- [Features Overview](../INDEX.md#features) - Complete feature documentation
+
+---
+
+[← Back to Features Documentation](../INDEX.md#features) | [← Back to Documentation Hub](../INDEX.md)

@@ -1,6 +1,7 @@
 ---
 title: Configuration Reference
 description: Complete configuration schemas, environment variables, and application settings for Nostr-BBS
+last_updated: 2025-12-23
 category: reference
 tags: [setup, deployment, api]
 ---
@@ -874,7 +875,7 @@ export const config: Readonly<SectionsConfig> = Object.freeze(loadedConfig);
 ## Related Documentation
 
 - [API Reference](api-reference.md) - API documentation
-- [Deployment Guide](../deployment/DEPLOYMENT.md) - Deployment instructions
+- [Deployment Guide](../deployment/deployment-guide.md) - Deployment instructions
 - [Architecture Overview](../architecture/02-architecture.md) - System architecture
 
 ---

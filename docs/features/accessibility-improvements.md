@@ -1,6 +1,7 @@
 ---
 title: Accessibility Improvements WCAG 2.1 Level AA
 description: Comprehensive WCAG 2.1 Level AA accessibility implementation including ARIA landmarks, keyboard navigation, and screen reader support
+last_updated: 2025-12-23
 category: reference
 tags: [accessibility, pwa, components]
 difficulty: intermediate
@@ -212,3 +213,24 @@ Implemented comprehensive WCAG 2.1 Level AA accessibility fixes across the appli
 **Implementation Date:** 2025-12-15
 **Implemented By:** Claude Sonnet 4.5
 **Compliance Level:** WCAG 2.1 Level AA
+
+---
+
+## Related Documentation
+
+### Feature Implementations
+- [PWA Implementation](pwa-implementation.md) - Progressive Web App features
+- [Search Usage Guide](search-usage-guide.md) - Search accessibility features
+- [Mute Quick Reference](mute-quick-reference.md) - User blocking features
+
+### Architecture & Design
+- [System Architecture](../architecture/02-architecture.md) - Overall system design
+- [UI/UX Design Principles](../INDEX.md#features) - Feature design guidelines
+
+### Standards & Compliance
+- [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/) - Web accessibility standards
+- [ARIA Authoring Practices](https://www.w3.org/WAI/ARIA/apg/) - ARIA patterns and widgets
+
+---
+
+[← Back to Features Documentation](../INDEX.md#features) | [← Back to Documentation Hub](../INDEX.md)

@@ -1,6 +1,7 @@
 ---
 title: User Mute/Ignore List Implementation Summary
 description: Implementation of user muting functionality with persistent storage and UI integration
+last_updated: 2025-12-23
 category: reference
 tags: [features, ui, messages]
 ---
@@ -124,7 +125,7 @@ interface MutedUser {
 
 ### Storage
 - localStorage key: `Nostr-BBS-muted-users`
-- Array of MutedUser objects serialized as JSON
+- Array of MutedUser objects serialised as JSON
 - Automatically loaded on page load
 - Saved immediately on mute/unmute
 

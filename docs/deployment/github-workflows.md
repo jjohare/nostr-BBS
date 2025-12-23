@@ -1,6 +1,7 @@
 ---
 title: GitHub Actions Workflows - GCP Deployment
 description: CI/CD workflow configuration for automated GCP Cloud Run deployments using GitHub Actions
+last_updated: 2025-12-23
 category: reference
 tags: [deployment, development, testing]
 ---
@@ -167,7 +168,7 @@ Configure these in: **Settings → Secrets and variables → Actions → Variabl
   - Used by: `deploy-pages.yml`
 
 - `ADMIN_PUBKEY`: Nostr admin public key (hex format)
-  - Example: `npub1...` converted to hex
+  - Example: 64-character hex string converted from npub format
   - Used by: `deploy-pages.yml`
 
 ## Deployment Order
@@ -370,3 +371,24 @@ curl https://storage.googleapis.com/Nostr-BBS-vectors/latest/manifest.json
 - Artifact Registry: $0-1 (per GB stored)
 - Cloud Storage: $0-2 (per GB stored + egress)
 - Total: ~$0-10/month for development
+
+---
+
+## Related Documentation
+
+### Deployment Guides
+- [General Deployment Guide](DEPLOYMENT.md) - Complete deployment overview
+- [GCP Deployment](GCP_DEPLOYMENT.md) - Cloud Run deployment steps
+- [GCP Architecture](gcp-architecture.md) - Cloud infrastructure design
+
+### Development Workflow
+- [System Architecture](../architecture/02-architecture.md) - System design and components
+- [Development Guide](../INDEX.md#development) - Development documentation hub
+
+### Configuration
+- [Environment Variables](DEPLOYMENT.md#environment-variables) - Configuration reference
+- [Secrets Setup](DEPLOYMENT.md#secrets-management) - GitHub secrets configuration
+
+---
+
+[← Back to Deployment Documentation](DEPLOYMENT.md) | [← Back to Documentation Hub](../INDEX.md)

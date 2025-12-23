@@ -1,6 +1,7 @@
 ---
 title: Store Reference
 description: Consolidated reference for all Svelte store APIs managing application state in Nostr-BBS
+last_updated: 2025-12-23
 category: reference
 tags: [api, development, ui]
 ---
@@ -24,11 +25,11 @@ This document consolidates all Svelte store APIs used throughout Nostr-BBS. Stor
 ## Table of Contents
 
 1. [Core Stores](#core-stores)
-2. [Authentication & User](#authentication--user)
+2. [Authentication & User](#authentication-user)
 3. [Channel Management](#channel-management)
 4. [Messaging](#messaging)
 5. [Notifications](#notifications)
-6. [PWA & Offline](#pwa--offline)
+6. [PWA & Offline](#pwa-offline)
 7. [UI State](#ui-state)
 8. [Preferences](#preferences)
 

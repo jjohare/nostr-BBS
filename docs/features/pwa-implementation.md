@@ -1,6 +1,7 @@
 ---
 title: Progressive Web App Implementation
 description: Complete PWA implementation including service worker, offline support, and app installation
+last_updated: 2025-12-23
 category: reference
 tags: [pwa, deployment, serverless]
 difficulty: advanced

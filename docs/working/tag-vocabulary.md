@@ -1,3 +1,11 @@
+---
+title: Standardised Tag Vocabulary
+description: Canonical 45-tag vocabulary for consistent metadata tagging across all Nostr-BBS documentation files
+category: reference
+tags: [documentation, metadata, tags, standards]
+last_updated: 2025-12-23
+---
+
 # Standardised Tag Vocabulary for Nostr-BBS Documentation
 
 **Version:** 1.0
@@ -175,3 +183,24 @@ difficulty: intermediate
 ## Version History
 
 - **1.0** (2025-12-20): Initial 45-tag vocabulary
+
+---
+
+## Related Documentation
+
+### Documentation Quality
+- [Documentation Index](INDEX.md) - Master documentation hub
+- [IA Architecture Spec](working/ia-architecture-spec.md) - Information architecture design
+- [Navigation Design Spec](working/navigation-design-spec.md) - Navigation patterns
+
+### Maintenance Tools
+- [Corpus Analysis](working/corpus-analysis.md) - Documentation metrics and analysis
+- [Automation Setup Report](working/automation-setup-report.md) - CI/CD automation status
+
+### Standards & Guidelines
+- [Tag Vocabulary](working/tag-vocabulary.md) - Standard metadata tags
+- [Documentation Standards](working/ia-architecture-spec.md#64-documentation-standards) - Writing guidelines
+
+---
+
+[← Back to Maintenance & Quality](INDEX.md#maintenance-quality) | [← Back to Documentation Hub](INDEX.md)

@@ -1,3 +1,11 @@
+---
+title: Information Architecture Specification
+description: Information architecture specification defining documentation structure and taxonomy
+category: explanation
+tags: [architecture, documentation, information-architecture]
+last_updated: 2025-12-23
+---
+
 # Information Architecture Specification
 **Project:** Nostr-BBS Documentation
 **Version:** 1.0
@@ -6,13 +14,18 @@
 
 ## Executive Summary
 
-Based on Wave 1 analysis revealing 43 documentation files with critical gaps (API docs 10%, Component docs 19%, Store docs 11%), this specification proposes a unified 7-section information architecture following the Diataxis framework. The current structure scores 52/100 with 7 orphaned files and broken security references.
+Based on comprehensive corpus analysis (December 2025) revealing 51 documentation files totaling 112,831 words, this specification proposes a unified 7-section information architecture following the Diataxis framework. The current structure achieves an **80.5% quality score** with excellent content uniqueness but critical tutorial gaps.
 
-**Key Metrics:**
-- Total files analyzed: 57 (excluding node_modules)
-- Documentation files: 43 in `/docs`, 14 scattered across codebase
-- Largest files: architecture/09-semantic-search-risks.md (2,494 lines)
-- Root README.md: 1,290 lines (requires splitting)
+**Key Metrics (Updated 2025-12-23):**
+- Total documentation files: 51 markdown files
+- Total word count: 112,831 words (average 2,212 words/doc)
+- Category distribution: 52.9% reference, 15.7% uncategorized, 13.7% howto, 9.8% explanation, **2% tutorial (CRITICAL GAP)**
+- Orphaned files: 0 (excellent coverage via INDEX.md)
+- Duplicate content: 0 groups detected
+- Link health: 19 documents with zero internal links need improvement
+- Largest files: link-validation-report.md (10,240 words), 09-semantic-search-risks.md (8,793 words)
+- Tag coverage: 47 unique tags, 84.3% of documents tagged
+- Quality score: **80.5/100** (B+ grade)
 
 ## 1. Proposed Directory Structure (Diataxis Framework)
 
@@ -693,14 +706,15 @@ See [ROADMAP.md](00-index/ROADMAP.md) for planned features and milestones.
 [Brief 2-3 sentence summary]
 
 ## Table of Contents
-- [Section 1](#section-1)
-- [Section 2](#section-2)
+- [Overview](#overview)
+- [Proposed Directory Structure](#1-proposed-directory-structure-diataxis-framework)
+- [File Placement Mapping](#2-file-placement-mapping-43-existing-files)
 
-## [Main Content]
+## Main Content
 
 ## Related Documents
-- [Related Doc 1](../path/to/doc1.md)
-- [Related Doc 2](../path/to/doc2.md)
+- [Documentation Index](../INDEX.md)
+- [Navigation Design Spec](navigation-design-spec.md)
 
 ## See Also
 - [External Link](https://example.com)
@@ -755,27 +769,34 @@ version: 1.0
 
 ## 8. Open Issues and Risks
 
-### 8.1 Critical Issues
+### 8.1 Critical Issues (Updated from Corpus Analysis)
 
-1. **Missing Security Documentation:**
-   - No `security-overview.md` or `threat-model.md`
-   - Broken references to security docs throughout codebase
-   - **Risk:** Security vulnerabilities not documented
+1. **Tutorial Content Gap (HIGHEST PRIORITY):**
+   - Only **1 tutorial document** (2% of corpus vs. 15-25% Diataxis target)
+   - Current: `pwa-quick-start.md` (731 words)
+   - **Need**: 5-7 learning-oriented guides (~7,000 additional words)
+   - **Recommended tutorials**: Getting Started, First Channel, First Message, Custom Relay Setup, Understanding Nostr Events
+   - **Risk:** High barrier to entry for new users and developers
 
-2. **API Documentation Gap (10% coverage):**
-   - Cloud Run endpoints not documented
-   - Relay WebSocket API not documented
-   - **Risk:** Developers cannot integrate with APIs
+2. **Zero-Link Documents (19 files):**
+   - 19 documents have **no internal links** including major documents:
+     - `09-semantic-search-risks.md` (8,793 words) - should reference security and architecture
+     - `gcp-architecture.md` (3,424 words) - should link to deployment guides
+     - `github-workflows.md` (1,253 words) - should link to deployment docs
+   - **Risk:** Poor discoverability, isolated knowledge silos
 
-3. **Component Documentation Gap (19% coverage):**
-   - Only 19% of components have docs
-   - No component architecture overview
-   - **Risk:** Onboarding friction for new developers
+3. **Missing Topic Coverage:**
+   - **Performance & Optimization**: No caching, tuning, or optimization guides
+   - **Troubleshooting**: No debugging guide, common issues FAQ, or error reference
+   - **Migration & Upgrades**: No version upgrade guide or breaking changes documentation
+   - **Accessibility**: Only 1 document (needs keyboard navigation, screen reader guides)
+   - **Internationalization**: No i18n/l10n documentation
+   - **Risk:** Critical operational knowledge gaps
 
-4. **Store Documentation Gap (11% coverage):**
-   - State management not explained
-   - Store patterns not documented
-   - **Risk:** Incorrect state usage, bugs
+4. **Tag Vocabulary Gaps:**
+   - Missing tags for: performance, optimization, monitoring, troubleshooting, mobile, i18n
+   - Current: 47 unique tags (need ~60 for comprehensive coverage)
+   - **Risk:** Poor searchability and categorization
 
 ### 8.2 Migration Risks
 
@@ -844,32 +865,51 @@ version: 1.0
 
 **Target:** No file >600 lines (improves readability and navigation)
 
-### Appendix C: Wave 1 Gaps (From Original Analysis)
+### Appendix C: Corpus Analysis Findings (December 2025)
 
-**From Wave 1 Summary:**
-- API docs: 10% coverage → Target 95%
-- Component docs: 19% coverage → Target 95%
-- Store docs: 11% coverage → Target 95%
-- Orphaned files: 7 files → Target 0 files
-- Broken security references → Fix all references
-- Missing: `architecture.md`, `security.md`, `testing.md`, `changelog.md`
+**Current State Assessment:**
+- **Strengths**:
+  - ✅ Zero orphaned files (excellent INDEX.md coverage)
+  - ✅ No duplicate content detected
+  - ✅ 84.3% of documents have metadata tags
+  - ✅ Comprehensive reference documentation (52.9% of corpus)
+  - ✅ Shallow 2-level directory hierarchy (easy navigation)
+  - ✅ Quality score: 80.5/100 (B+ grade)
+
+- **Critical Gaps**:
+  - ❌ Tutorial content: Only 2% (need 15-25%)
+  - ❌ 19 documents with zero internal links
+  - ❌ Missing topics: performance, troubleshooting, migration, i18n
+  - ❌ Tag vocabulary gaps (47 vs. 60 needed)
+  - ❌ 8 uncategorized working documents need organization
+
+**Top 20 Most-Used Tags** (from corpus analysis):
+1. features (13), 2. architecture (11), 3. ui (10), 4. deployment (9), 5. search (7), 6. development (7), 7. messages (7), 8. sparc-methodology (6), 9. pwa (5), 10. nostr-protocol (4), 11. semantic-search (4), 12. setup (4), 13. components (4), 14. serverless (3), 15. testing (3), 16. nip-44 (3), 17. nostr (3), 18. nip-17 (3), 19. channels (3), 20. chat (3)
+
+**Link Health Summary**:
+- **Well-connected** (7+ inbound): 4 docs (02-architecture.md, dm-implementation.md, 01-specification.md, pwa-quick-start.md)
+- **Moderately connected** (3-6 inbound): 27 docs
+- **Poorly connected** (1-2 inbound): 19 docs
+- **Single weakly-connected**: navigation-enhancement-spec.md (0 inbound)
 
 **Addressed in this IA:**
-- ✅ API docs: Create `03-reference/api/` with 4 API docs
-- ✅ Component docs: Create `03-reference/components/` with 15+ docs
-- ✅ Store docs: Create `03-reference/stores/` with 5 store docs
-- ✅ Orphaned files: Map all 7 files to new locations
-- ✅ Security references: Create `06-security/` section
-- ✅ Missing docs: Create `CHANGELOG.md`, `security-overview.md`, `testing-strategy.md`
+- ✅ Orphaned files: Already at 0, maintain with INDEX.md updates
+- ✅ Document organization: Proposed 7-section Diataxis structure
+- ⚠️ Tutorial gap: Create `01-tutorials/` directory with 5-7 guides
+- ⚠️ Zero-link documents: Add cross-references to 19 isolated docs
+- ⚠️ Missing topics: Add troubleshooting, performance, migration guides
+- ⚠️ Tag expansion: Add 13 new tags (performance, mobile, i18n, etc.)
 
 ---
 
 **Next Steps:**
 1. Review and approve this IA specification
-2. Execute Phase 1: Critical Restructuring (Week 1)
-3. Create migration scripts for automated link updates
-4. Set up CI/CD validation for links and markdown linting
-5. Proceed with Phase 2-6 as outlined in Section 6.1
+2. Review [Corpus Analysis Report](corpus-analysis.md) for detailed metrics
+3. Execute Phase 1: Critical Restructuring (Week 1)
+4. Create migration scripts for automated link updates
+5. Set up CI/CD validation for links and markdown linting
+6. Proceed with Phase 2-6 as outlined in Section 6.1
+7. **PRIORITY**: Create 5-7 tutorial documents to address critical 2% tutorial gap
 
 **Questions for Review:**
 - Approval to proceed with 7-section structure?
@@ -877,3 +917,9 @@ version: 1.0
 - Approval to consolidate duplicate feature docs?
 - Approval to create 8+ missing critical docs?
 - Timeline acceptable (6-week phased approach)?
+- **NEW**: Approval to prioritize tutorial creation (critical gap)?
+
+**Related Documentation:**
+- [Corpus Analysis Report](corpus-analysis.md) - Comprehensive documentation analysis and metrics
+- [Tag Vocabulary](tag-vocabulary.md) - Current tag definitions and usage
+- [Navigation Design Spec](navigation-design-spec.md) - Navigation patterns and UI
