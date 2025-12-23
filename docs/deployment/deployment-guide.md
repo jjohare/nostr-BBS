@@ -1,6 +1,7 @@
 ---
 title: Deployment Guide - Nostr-BBS
 description: Complete deployment guide for Nostr-BBS including GitHub Pages, Docker relay, and GCP integration
+last_updated: 2025-12-23
 category: howto
 tags: [deployment, setup, relay, architecture]
 ---
@@ -215,7 +216,7 @@ docker compose exec -T postgres psql -U nostr nostr_relay < backup.sql
 
 ## Google Cloud Platform Setup
 
-For detailed GCP deployment instructions, see **[GCP Deployment Guide](./GCP_DEPLOYMENT.md)**.
+For detailed GCP deployment instructions, see **[GCP Deployment Guide](./gcp-deployment.md)**.
 
 ### Quick GCP Setup
 
@@ -242,7 +243,7 @@ gcloud run services describe logseq-embeddings \
 **Save the Cloud Run URL** - you'll use it as `VITE_EMBEDDING_API_URL`.
 
 For complete GCP setup, troubleshooting, and cost optimisation, see:
-- **[GCP Deployment Guide](./GCP_DEPLOYMENT.md)** - Step-by-step Cloud Run deployment
+- **[GCP Deployment Guide](./gcp-deployment.md)** - Step-by-step Cloud Run deployment
 - **[GCP Architecture](./gcp-architecture.md)** - Architecture design and verification
 
 ## GitHub Pages Setup
@@ -464,7 +465,7 @@ curl -i -N -H "Connection: Upgrade" \
 
 ### Authentication Fails
 
-**Symptom**: "Not authorized" or "Invalid signature"
+**Symptom**: "Not authorised" or "Invalid signature"
 
 **Solutions**:
 ```bash

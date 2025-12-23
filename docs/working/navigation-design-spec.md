@@ -1,3 +1,11 @@
+---
+title: Navigation Design Specification
+description: Navigation design patterns and wayfinding improvements for documentation
+category: explanation
+tags: [documentation, navigation, design, ux]
+last_updated: 2025-12-23
+---
+
 # Navigation Design Specification - Nostr-BBS Documentation
 
 **Wave 1 Navigation Analysis**
@@ -932,7 +940,7 @@ graph TB
 - **Frontend:** GitHub Pages (static CDN)
 - **Relay:** Self-hosted Docker (not serverless, but minimal ops)
 - **AI Services:** Google Cloud Run (scale-to-zero)
-- **Cost:** Free tier optimized
+- **Cost:** Free tier optimised
 
 📖 [Design Patterns](design-patterns.md)
 

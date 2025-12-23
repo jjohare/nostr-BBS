@@ -5,9 +5,18 @@ set -euo pipefail
 DOCS_DIR="${1:-docs}"
 EXIT_CODE=0
 ERRORS_FOUND=0
+REPORT_FILE="${2:-}"
 
 echo "🔗 Validating internal markdown links in ${DOCS_DIR}..."
 echo "================================================"
+
+# Initialize report if specified
+if [[ -n "$REPORT_FILE" ]]; then
+    mkdir -p "$(dirname "$REPORT_FILE")"
+    echo "# Link Validation Report" > "$REPORT_FILE"
+    echo "Generated: $(date -u +%Y-%m-%d\ %H:%M:%S\ UTC)" >> "$REPORT_FILE"
+    echo "" >> "$REPORT_FILE"
+fi
 
 # Find all markdown files
 while IFS= read -r -d '' file; do
@@ -45,11 +54,28 @@ while IFS= read -r -d '' file; do
         if [[ ! -e "$full_path" ]]; then
             echo "  ❌ Broken link: $link (from ${file})"
             echo "     Target not found: $full_path"
+
+            if [[ -n "$REPORT_FILE" ]]; then
+                echo "- ❌ \`${file}\` → \`${link}\`" >> "$REPORT_FILE"
+                echo "  - Target: \`${full_path}\` (not found)" >> "$REPORT_FILE"
+            fi
+
             ((ERRORS_FOUND++))
             EXIT_CODE=1
         fi
     done
 done < <(find "$DOCS_DIR" -type f -name "*.md" -print0)
+
+# Finalize report
+if [[ -n "$REPORT_FILE" ]]; then
+    echo "" >> "$REPORT_FILE"
+    echo "## Summary" >> "$REPORT_FILE"
+    if [[ $EXIT_CODE -eq 0 ]]; then
+        echo "✅ All links validated successfully" >> "$REPORT_FILE"
+    else
+        echo "❌ Found ${ERRORS_FOUND} broken link(s)" >> "$REPORT_FILE"
+    fi
+fi
 
 echo ""
 echo "================================================"

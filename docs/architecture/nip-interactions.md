@@ -1,6 +1,7 @@
 ---
 title: Nostr Improvement Proposal (NIP) Interactions
 description: Visual representation of how different NIPs interact within the Nostr-BBS system for developers and debuggers
+last_updated: 2025-12-23
 category: explanation
 tags: [nostr, nip-29, nip-17, nip-44, architecture, events]
 ---
@@ -17,7 +18,7 @@ tags: [nostr, nip-29, nip-17, nip-44, architecture, events]
 
 ## Overview
 
-This document visualizes how different Nostr Improvement Proposals (NIPs) interact within the Nostr-BBS system. Understanding these relationships is critical for developers implementing features or debugging protocol-level issues.
+This document visualises how different Nostr Improvement Proposals (NIPs) interact within the Nostr-BBS system. Understanding these relationships is critical for developers implementing features or debugging protocol-level issues.
 
 ---
 

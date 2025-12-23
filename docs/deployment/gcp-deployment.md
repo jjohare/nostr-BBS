@@ -1,6 +1,7 @@
 ---
 title: Google Cloud Platform Deployment Guide
-description: Step-by-step guide for deploying Nostr-BBS Embedding API to GCP Cloud Run with free tier optimization
+description: Step-by-step guide for deploying Nostr-BBS Embedding API to GCP Cloud Run with free tier optimisation
+last_updated: 2025-12-23
 category: howto
 tags: [deployment, setup, search]
 ---
@@ -482,7 +483,7 @@ gcloud iam service-accounts keys create key.json \
 
 ### Internal Documentation
 - [GCP Architecture Specification](./gcp-architecture.md)
-- [General Deployment Guide](./DEPLOYMENT.md)
+- [General Deployment Guide](./deployment-guide.md)
 
 ### External Resources
 - [Cloud Run Documentation](https://cloud.google.com/run/docs)

@@ -1,6 +1,7 @@
 ---
 title: Mute System Quick Reference
 description: Quick reference guide for implementing and using the user mute/ignore functionality
+last_updated: 2025-12-23
 category: howto
 tags: [features, development, ui]
 ---
@@ -335,3 +336,25 @@ console.assert(muteStore.isMuted('npub1abc...') === true);
 - Can be circumvented by clearing localStorage
 - Not a security/privacy feature
 - For content filtering only
+
+---
+
+## Related Documentation
+
+### Feature Guides
+- [PWA Quick Start](pwa-quick-start.md) - Progressive Web App installation
+- [Search Implementation](search-implementation.md) - Semantic search features
+- [Threading Implementation](threading-implementation.md) - Conversation threading
+- [DM Implementation](dm-implementation.md) - Direct messaging system
+
+### Architecture
+- [System Architecture](../architecture/02-architecture.md) - Overall system design
+- [NIP Protocol Reference](../reference/nip-protocol-reference.md) - Nostr protocol specs
+
+### User Guides
+- [Getting Started](../INDEX.md#getting-started) - Quick start guides for new users
+- [Features Overview](../INDEX.md#features) - Complete feature documentation
+
+---
+
+[← Back to Features Documentation](../INDEX.md#features) | [← Back to Documentation Hub](../INDEX.md)

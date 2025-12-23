@@ -1,6 +1,7 @@
 ---
 title: NIP-25 Reactions Implementation
 description: Implementation of emoji reactions to messages using NIP-25 protocol specification
+last_updated: 2025-12-23
 category: reference
 tags: [nip-25, reactions, nostr-protocol]
 difficulty: intermediate

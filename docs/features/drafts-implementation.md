@@ -1,6 +1,7 @@
 ---
 title: Message Drafts Auto-Save Implementation
 description: Implementation of automatic draft saving for channel messages with localStorage persistence
+last_updated: 2025-12-23
 category: reference
 tags: [features, messages, ui]
 ---
@@ -214,7 +215,7 @@ handleBlur()                   // Save on blur
 1. **Debouncing**: Prevents excessive writes (1s delay)
 2. **Conditional Saves**: Only saves if content changed
 3. **Lazy Loading**: Drafts loaded only when needed
-4. **Efficient Storage**: JSON serialization with Map structure
+4. **Efficient Storage**: JSON serialisation with Map structure
 
 ### Memory Management
 - Drafts stored in localStorage (not RAM)

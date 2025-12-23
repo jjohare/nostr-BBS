@@ -21,23 +21,39 @@ declare -A RESULTS
 run_validator() {
     local name="$1"
     local script="$2"
+    local report_file="${3:-}"
 
     echo "┌────────────────────────────────────────────────────────────┐"
     echo "│ Running: ${name}"
     echo "└────────────────────────────────────────────────────────────┘"
 
-    if bash "${SCRIPT_DIR}/${script}" "$DOCS_DIR"; then
-        RESULTS["$name"]="✅ PASSED"
-        echo ""
+    if [[ -n "$report_file" ]]; then
+        if bash "${SCRIPT_DIR}/${script}" "$DOCS_DIR" "$report_file"; then
+            RESULTS["$name"]="✅ PASSED"
+            echo ""
+        else
+            RESULTS["$name"]="❌ FAILED"
+            EXIT_CODE=1
+            echo ""
+        fi
     else
-        RESULTS["$name"]="❌ FAILED"
-        EXIT_CODE=1
-        echo ""
+        if bash "${SCRIPT_DIR}/${script}" "$DOCS_DIR"; then
+            RESULTS["$name"]="✅ PASSED"
+            echo ""
+        else
+            RESULTS["$name"]="❌ FAILED"
+            EXIT_CODE=1
+            echo ""
+        fi
     fi
 }
 
-# Run all validators
-run_validator "Link Validation" "validate-links.sh"
+# Create working directory for reports
+WORKING_DIR="${DOCS_DIR}/working"
+mkdir -p "$WORKING_DIR"
+
+# Run all validators with reports
+run_validator "Link Validation" "validate-links.sh" "${WORKING_DIR}/link-validation-report.md"
 run_validator "Front Matter Validation" "validate-frontmatter.sh"
 run_validator "Mermaid Diagram Validation" "validate-mermaid.sh"
 run_validator "UK English Spelling" "validate-spelling.sh"

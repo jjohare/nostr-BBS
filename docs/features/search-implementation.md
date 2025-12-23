@@ -1,6 +1,7 @@
 ---
 title: Channel Message Search Implementation
 description: Implementation of channel message search with filtering, highlighting, and advanced search options
+last_updated: 2025-12-23
 category: reference
 tags: [search, chat, components]
 difficulty: intermediate

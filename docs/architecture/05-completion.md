@@ -1,6 +1,7 @@
 ---
 title: Nostr-BBS SPARC Completion
 description: Deployment, verification, and handoff criteria for production readiness of Nostr-BBS
+last_updated: 2025-12-23
 category: reference
 tags: [completion, sparc-methodology, deployment, testing]
 difficulty: intermediate
@@ -9,7 +10,7 @@ date: 2024-12-11
 status: active
 related-docs:
   - docs/architecture/04-refinement.md
-  - docs/deployment/DEPLOYMENT.md
+  - docs/deployment/deployment-guide.md
 ---
 
 [← Back to Main README](../../README.md)

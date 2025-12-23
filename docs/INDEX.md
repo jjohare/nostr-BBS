@@ -1,3 +1,11 @@
+---
+title: Nostr-BBS Documentation Index
+description: Master documentation hub for Nostr-BBS with guides, architecture, features, and deployment documentation
+category: reference
+tags: [documentation, index, navigation]
+last_updated: 2025-12-23
+---
+
 # Nostr-BBS Documentation Index
 
 **Master documentation hub for Nostr-BBS** - A decentralised community bulletin board system built on the Nostr protocol with NIP-52 calendar events, NIP-28 public chat channels, NIP-17/59 encrypted direct messages, and AI-powered semantic search.
@@ -15,7 +23,7 @@
 - [Development](#development)
 - [Deployment](#deployment)
 - [Reference](#reference)
-- [Maintenance & Quality](#maintenance--quality)
+- [Maintenance & Quality](#maintenance-quality)
 
 ---
 
@@ -162,10 +170,10 @@ Complete reference for all Svelte stores including auth, channels, messages, and
 
 ### Production Deployment
 
-**[Deployment Guide](deployment/DEPLOYMENT.md)**
+**[Deployment Guide](deployment/deployment-guide.md)**
 Comprehensive serverless deployment guide for GitHub Pages and Google Cloud Platform.
 
-**[GCP Deployment](deployment/GCP_DEPLOYMENT.md)**
+**[GCP Deployment](deployment/gcp-deployment.md)**
 Step-by-step Google Cloud Platform deployment for Cloud Run, Cloud Storage, and Firestore.
 
 **[GCP Architecture](deployment/gcp-architecture.md)**
@@ -209,7 +217,7 @@ Maintenance procedures, dependency updates, security patches, and operational gu
 **[Link Validation Summary](link-validation-summary.md)**
 Executive summary of documentation link validation results (489 broken links identified).
 
-**[Link Validation Report](link-validation-report.md)**
+**[Link Validation Report](working/link-validation-report.md)**
 Detailed link validation report with broken links categorised by type.
 
 **[Link Validation Index](link-validation-index.md)**

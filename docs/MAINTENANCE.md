@@ -4,6 +4,7 @@ description: Procedures for maintaining and updating project documentation
 status: approved
 last_updated: 2025-12-20
 category: maintenance
+tags: [maintenance, documentation]
 ---
 
 # Documentation Maintenance Guide
@@ -200,6 +201,7 @@ description: Brief description
 status: draft|review|approved|deprecated
 last_updated: YYYY-MM-DD
 category: guide|reference|api|tutorial
+tags: [maintenance, documentation]
 ---
 ```
 
@@ -225,10 +227,10 @@ category: guide|reference|api|tutorial
 
 **Common corrections**:
 - color → colour
-- behavior → behaviour
-- organize → organise
-- analyze → analyse
-- center → centre
+- behaviour → behaviour
+- organise → organise
+- analyse → analyse
+- centre → centre
 - license → licence (noun)
 
 **Exceptions**: Technical terms in code blocks use US spelling

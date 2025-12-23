@@ -1,6 +1,7 @@
 ---
 title: Pinned Messages Implementation
 description: Implementation of message pinning functionality for highlighting important channel messages
+last_updated: 2025-12-23
 category: reference
 tags: [chat, channels, components]
 difficulty: intermediate
@@ -136,10 +137,10 @@ interface PinnedMessagesState {
 ## Integration Points
 - Channel detail page
 - MessageItem component
-- User authentication/authorization
+- User authentication/authorisation
 - Channel store for messages
 
-## Future Enhancements (Not Implemented)
+## Potential Future Enhancements
 - Sync pinned messages to Nostr relays
 - Per-user pin preferences
 - Pin reason/description

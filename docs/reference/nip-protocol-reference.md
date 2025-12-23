@@ -1,6 +1,7 @@
 ---
 title: NIP Protocol Reference
 description: Definitive reference for all Nostr Improvement Proposal implementations in Nostr-BBS
+last_updated: 2025-12-23
 category: reference
 tags: [nostr, nip-29, nip-17, nip-44, nip-25, events]
 ---
@@ -27,7 +28,7 @@ This document consolidates all Nostr Improvement Proposal (NIP) implementations 
 2. [NIP-04: Encrypted DMs (Legacy)](#nip-04-encrypted-dms-legacy)
 3. [NIP-06: Key Derivation](#nip-06-key-derivation)
 4. [NIP-09: Event Deletion](#nip-09-event-deletion)
-5. [NIP-10: Text Notes & Replies](#nip-10-text-notes--replies)
+5. [NIP-10: Text Notes & Replies](#nip-10-text-notes-replies)
 6. [NIP-17: Private DMs](#nip-17-private-dms)
 7. [NIP-25: Reactions](#nip-25-reactions)
 8. [NIP-28: Public Chat (Deprecated)](#nip-28-public-chat-deprecated)
@@ -53,7 +54,7 @@ Foundation of all Nostr events. Defines event structure, signing, and verificati
 
 ```typescript
 interface NostrEvent {
-  id: string;        // SHA-256 hash of serialized event
+  id: string;        // SHA-256 hash of serialised event
   pubkey: string;    // Hex-encoded public key
   created_at: number; // Unix timestamp (seconds)
   kind: number;      // Event type identifier
@@ -78,8 +79,8 @@ interface NostrEvent {
 ### Event ID Calculation
 
 ```typescript
-// Serialization format for ID hash
-const serialized = JSON.stringify([
+// Serialisation format for ID hash
+const serialised = JSON.stringify([
   0,                  // Reserved for future use
   event.pubkey,
   event.created_at,
@@ -89,15 +90,15 @@ const serialized = JSON.stringify([
 ]);
 
 // Hash with SHA-256
-const id = sha256(serialized);
+const id = sha256(serialised);
 ```
 
 ### Signature Verification
 
 ```typescript
 // Verify steps:
-// 1. Compute event ID from serialized content
-const computedId = sha256(serializeEvent(event));
+// 1. Compute event ID from serialised content
+const computedId = sha256(serialiseEvent(event));
 
 // 2. Verify ID matches event.id
 if (computedId !== event.id) return false;
@@ -1054,7 +1055,7 @@ receiveDM(myPubkey, (dm) => {
 | 28 | Public Chat | Deprecated | Use NIP-29 instead |
 | 50 | Search | Client-side | Semantic search |
 
-### Not Implemented ❌
+### Additional NIPs for Future Consideration
 
 | NIP | Title | Priority | Use Case |
 |-----|-------|----------|----------|

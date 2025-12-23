@@ -1,6 +1,7 @@
 ---
 title: Mention Functionality Patch for MessageItem
 description: Patch implementation for adding user mention functionality to message components
+last_updated: 2025-12-23
 category: reference
 tags: [development, features, messages]
 ---
@@ -64,13 +65,13 @@ Add these functions before the closing </script> tag:
   }
 
   function handleMentionClick(pubkey: string) {
-    console.log('View profile:', pubkey);
-    // TODO: Navigate to /profile/{pubkey}
+    // Navigate to user profile page
+    goto(`/profile/${pubkey}`);
   }
 
 Update the main div class attribute to include mention highlight:
 
-  class="flex gap-3 group ... {isMentioned ? 'mention-highlight' : ''}"
+  class="flex gap-3 group {isMentioned ? 'mention-highlight' : ''}"
 
 Replace the message content paragraph (around line 160):
 
@@ -132,3 +133,25 @@ Add these styles at the end of the file:
     border-radius: 9999px;
   }
 </style>
+
+---
+
+## Related Documentation
+
+### Feature Guides
+- [PWA Quick Start](pwa-quick-start.md) - Progressive Web App installation
+- [Search Implementation](search-implementation.md) - Semantic search features
+- [Threading Implementation](threading-implementation.md) - Conversation threading
+- [DM Implementation](dm-implementation.md) - Direct messaging system
+
+### Architecture
+- [System Architecture](../architecture/02-architecture.md) - Overall system design
+- [NIP Protocol Reference](../reference/nip-protocol-reference.md) - Nostr protocol specs
+
+### User Guides
+- [Getting Started](../INDEX.md#getting-started) - Quick start guides for new users
+- [Features Overview](../INDEX.md#features) - Complete feature documentation
+
+---
+
+[← Back to Features Documentation](../INDEX.md#features) | [← Back to Documentation Hub](../INDEX.md)

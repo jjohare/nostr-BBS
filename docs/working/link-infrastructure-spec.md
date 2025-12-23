@@ -1,3 +1,11 @@
+---
+title: Link Infrastructure Specification
+description: Specification for link management, validation, and automated checking infrastructure
+category: explanation
+tags: [documentation, links, validation, infrastructure]
+last_updated: 2025-12-23
+---
+
 # Link Infrastructure Specification
 **Version**: 1.0
 **Date**: 2025-12-20
@@ -801,7 +809,7 @@ def inject_related_docs(filepath, related_docs):
 #### Discoverability
 - [ ] Related documents surface relevant content
 - [ ] Search results include link context
-- [ ] Hub pages effectively categorize content
+- [ ] Hub pages effectively categorise content
 - [ ] Topic-based navigation enables cross-category exploration
 
 ---

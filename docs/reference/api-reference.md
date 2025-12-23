@@ -1,6 +1,7 @@
 ---
 title: API Reference
 description: Comprehensive API reference for all endpoints, functions, and interfaces in Nostr-BBS
+last_updated: 2025-12-23
 category: reference
 tags: [api, relay, search, authentication]
 ---

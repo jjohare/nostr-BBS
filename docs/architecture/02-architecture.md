@@ -1,6 +1,7 @@
 ---
 title: Nostr-BBS SPARC Architecture
 description: System architecture design for Nostr-BBS including component diagrams, data flow, and technical infrastructure
+last_updated: 2025-12-23
 category: explanation
 tags: [architecture, sparc-methodology, serverless, pwa]
 difficulty: intermediate
@@ -95,10 +96,10 @@ sequenceDiagram
     R->>R: 11. Check pubkey in whitelist
     R->>R: 12. Validate channel membership
 
-    alt User not authorized
+    alt User not authorised
         R->>WS: 13a. NOTICE: Auth failed
         WS->>UI: 14a. Show error
-    else User authorized
+    else User authorised
         R->>DO: 13b. Store event
 
         Note over DO: Durable Objects Storage
@@ -296,7 +297,7 @@ graph TB
 | `src/lib/nostr/` | Nostr protocol implementation (NIPs 01, 06, 09, 17, 25, 28, 29, 42, 44, 52, 59) |
 | `src/lib/stores/` | Svelte stores for reactive state management |
 | `src/lib/utils/` | Helper utilities for storage, crypto, search, export |
-| `src/lib/components/` | Reusable Svelte 5 components organized by feature |
+| `src/lib/components/` | Reusable Svelte 5 components organised by feature |
 | `src/routes/` | SvelteKit file-based routing |
 | `static/` | PWA assets (manifest, icons, service worker) |
 
@@ -566,7 +567,8 @@ async function adminDeleteMessage(eventId: string, channelId: string) {
     ],
     content: "Removed by admin",
   };
-  // ... sign with admin key
+  // Sign event with admin private key
+  return finalizeEvent(event, adminPrivateKey);
 }
 ```
 

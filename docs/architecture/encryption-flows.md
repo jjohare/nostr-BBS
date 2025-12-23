@@ -1,6 +1,7 @@
 ---
 title: Encryption Flows - Nostr-BBS Security Architecture
 description: Detailed visual comparisons of encryption strategies used in Nostr-BBS including NIP-04, NIP-44, and public messages
+last_updated: 2025-12-23
 category: explanation
 tags: [encryption, security, nip-04, nip-44, nostr, architecture]
 ---
@@ -17,7 +18,7 @@ tags: [encryption, security, nip-04, nip-44, nostr, architecture]
 
 ## Overview
 
-This document provides detailed visual comparisons of encryption strategies used in Nostr-BBS. Understanding when and how to use each encryption method is critical for maintaining privacy and security while optimizing performance.
+This document provides detailed visual comparisons of encryption strategies used in Nostr-BBS. Understanding when and how to use each encryption method is critical for maintaining privacy and security while optimising performance.
 
 ---
 

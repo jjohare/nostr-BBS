@@ -1,6 +1,7 @@
 ---
 title: Search Feature Usage Guide
 description: User guide for using full-text search features including keyboard shortcuts and query operators
+last_updated: 2025-12-23
 category: howto
 tags: [features, search, ui]
 ---
@@ -321,3 +322,25 @@ const results = await searchMessages('nostr AND protocol', {
   limit: 50
 });
 ```
+
+---
+
+## Related Documentation
+
+### Feature Guides
+- [PWA Quick Start](pwa-quick-start.md) - Progressive Web App installation
+- [Search Implementation](search-implementation.md) - Semantic search features
+- [Threading Implementation](threading-implementation.md) - Conversation threading
+- [DM Implementation](dm-implementation.md) - Direct messaging system
+
+### Architecture
+- [System Architecture](../architecture/02-architecture.md) - Overall system design
+- [NIP Protocol Reference](../reference/nip-protocol-reference.md) - Nostr protocol specs
+
+### User Guides
+- [Getting Started](../INDEX.md#getting-started) - Quick start guides for new users
+- [Features Overview](../INDEX.md#features) - Complete feature documentation
+
+---
+
+[← Back to Features Documentation](../INDEX.md#features) | [← Back to Documentation Hub](../INDEX.md)

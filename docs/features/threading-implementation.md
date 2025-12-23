@@ -1,6 +1,7 @@
 ---
 title: Quote/Reply Threading Implementation
 description: Implementation of message threading with quote and reply functionality using NIP-10 tags
+last_updated: 2025-12-23
 category: reference
 tags: [threading, chat, components, nostr-protocol]
 difficulty: advanced

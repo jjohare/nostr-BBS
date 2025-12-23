@@ -1,6 +1,7 @@
 ---
 title: Nostr-BBS Semantic Vector Search Specification
 description: Specification for AI-powered semantic search feature enabling natural language message discovery across Nostr-BBS
+last_updated: 2025-12-23
 category: reference
 tags: [semantic-search, specification, search, architecture]
 difficulty: advanced
@@ -33,7 +34,7 @@ Semantic Vector Search enhances the Nostr-BBS chat system with intelligent simil
 - **Semantic message search** across 100k+ historical messages
 - **Client-side vector search** (privacy-preserving, no server queries)
 - **Nightly embedding generation** via GitHub Actions
-- **WiFi-optimized lazy loading** (~15MB compressed index)
+- **WiFi-optimised lazy loading** (~15MB compressed index)
 - **O(log n) HNSW search** using hnswlib-wasm (247KB bundle)
 - **R2-backed storage** (Cloudflare free tier: 10GB, 1M reads/month)
 
@@ -448,7 +449,7 @@ Quantization: int8 scalar
 
 ```
 hnswlib-wasm: 247KB gzipped
-  - SIMD optimized for modern browsers
+  - SIMD optimised for modern browsers
   - No external dependencies
   - WebAssembly module + JS glue code
 ```

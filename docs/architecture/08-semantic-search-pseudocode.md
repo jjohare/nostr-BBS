@@ -1,6 +1,7 @@
 ---
 title: Semantic Vector Search SPARC Pseudocode
 description: Detailed algorithm design for the semantic search embedding generation and HNSW indexing pipeline
+last_updated: 2025-12-23
 category: reference
 tags: [semantic-search, pseudocode, sparc-methodology, architecture]
 difficulty: advanced
@@ -30,7 +31,7 @@ This document specifies the algorithms and data flows for implementing semantic 
 - **HNSW** (Hierarchical Navigable Small World) index for efficient nearest-neighbour search
 - **Cloudflare R2** for CDN-distributed index storage
 - **IndexedDB** for client-side caching
-- **int8 quantization** for bandwidth optimization
+- **int8 quantization** for bandwidth optimisation
 
 ---
 

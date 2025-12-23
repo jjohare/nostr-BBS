@@ -27,7 +27,13 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:chromium": "playwright test --project=chromium",
     "test:e2e:firefox": "playwright test --project=firefox",
-    "test:e2e:webkit": "playwright test --project=webkit"
+    "test:e2e:webkit": "playwright test --project=webkit",
+    "validate": "npm run lint && npm run typecheck && npm run test && npm run validate:docs",
+    "validate:docs": "./docs/scripts/validate-all.sh docs",
+    "validate:docs:links": "./docs/scripts/validate-links.sh docs",
+    "validate:docs:frontmatter": "./docs/scripts/validate-frontmatter.sh docs",
+    "validate:docs:mermaid": "./docs/scripts/validate-mermaid.sh docs",
+    "validate:docs:spelling": "./docs/scripts/validate-spelling.sh docs"
   },
   "dependencies": {
     "@nostr-dev-kit/ndk": "^2.8.2",
