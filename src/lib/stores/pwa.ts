@@ -199,7 +199,14 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 
     return registration;
   } catch (error) {
-    console.error('[PWA] Service worker registration failed:', error);
+    // In dev mode, service worker may fail due to missing Workbox manifest injection
+    // This is expected behavior - only log at debug level
+    const isDev = import.meta.env.DEV;
+    if (isDev) {
+      console.debug('[PWA] Service worker unavailable in dev mode (expected)');
+    } else {
+      console.error('[PWA] Service worker registration failed:', error);
+    }
     return null;
   }
 }

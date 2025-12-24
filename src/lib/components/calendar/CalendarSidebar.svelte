@@ -593,18 +593,37 @@
 <style>
   .calendar-sidebar {
     position: relative;
+    flex-shrink: 0;
   }
 
   .calendar-sidebar.expanded {
-    width: 280px;
+    width: clamp(240px, 20vw, 320px);
+    min-width: 240px;
+    max-width: 320px;
   }
 
   .calendar-sidebar.collapsed {
     width: 48px;
+    min-width: 48px;
   }
 
   .calendar-sidebar.hidden {
     display: none;
+  }
+
+  /* Responsive breakpoints */
+  @media (max-width: 1024px) {
+    .calendar-sidebar.expanded {
+      width: 260px;
+      min-width: 240px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .calendar-sidebar.expanded {
+      width: 100%;
+      max-width: none;
+    }
   }
 
   /* Hatched pattern for busy slots */
@@ -632,6 +651,12 @@
   .calendar-sidebar,
   .sidebar-content {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Touch scroll optimization */
+  .sidebar-content {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
 
   /* Scrollbar styling */

@@ -71,15 +71,33 @@ function createProfileCache() {
     };
 
     update(state => {
-      state.profiles.set(pubkey, fetchingEntry);
-      return state;
+      const profiles = new Map(state.profiles);
+      profiles.set(pubkey, fetchingEntry);
+      return { ...state, profiles };
     });
 
     // Fetch from NDK with throttling
     try {
       const ndk = ndkStore.get();
       if (!ndk) {
-        throw new Error('NDK not initialized');
+        // NDK not ready yet - return placeholder without throwing
+        console.debug('[ProfileCache] NDK not initialized, returning placeholder for', pubkey.slice(0, 8));
+        const placeholder: CachedProfile = {
+          pubkey,
+          profile: null,
+          displayName: truncatePubkey(pubkey),
+          avatar: null,
+          nip05: null,
+          about: null,
+          lastFetched: 0, // Will retry on next fetch
+          isFetching: false
+        };
+        update(state => {
+          const profiles = new Map(state.profiles);
+          profiles.set(pubkey, placeholder);
+          return { ...state, profiles };
+        });
+        return placeholder;
       }
 
       // Throttle concurrent fetches to prevent overwhelming relays
@@ -126,17 +144,18 @@ function createProfileCache() {
       };
 
       update(state => {
+        const profiles = new Map(state.profiles);
         // Limit cache size
-        if (state.profiles.size >= MAX_CACHE_SIZE) {
-          const oldestKey = Array.from(state.profiles.entries())
+        if (profiles.size >= MAX_CACHE_SIZE) {
+          const oldestKey = Array.from(profiles.entries())
             .sort((a, b) => a[1].lastFetched - b[1].lastFetched)[0]?.[0];
           if (oldestKey) {
-            state.profiles.delete(oldestKey);
+            profiles.delete(oldestKey);
           }
         }
 
-        state.profiles.set(pubkey, entry);
-        return state;
+        profiles.set(pubkey, entry);
+        return { ...state, profiles };
       });
 
       return entry;
@@ -155,8 +174,9 @@ function createProfileCache() {
       };
 
       update(state => {
-        state.profiles.set(pubkey, fallbackEntry);
-        return state;
+        const profiles = new Map(state.profiles);
+        profiles.set(pubkey, fallbackEntry);
+        return { ...state, profiles };
       });
 
       return fallbackEntry;
@@ -191,8 +211,9 @@ function createProfileCache() {
    */
   function remove(pubkey: string): void {
     update(state => {
-      state.profiles.delete(pubkey);
-      return state;
+      const profiles = new Map(state.profiles);
+      profiles.delete(pubkey);
+      return { ...state, profiles };
     });
   }
 
@@ -206,7 +227,8 @@ function createProfileCache() {
     avatar: string | null
   ): void {
     update(state => {
-      const existing = state.profiles.get(pubkey);
+      const profiles = new Map(state.profiles);
+      const existing = profiles.get(pubkey);
       const entry: CachedProfile = {
         pubkey,
         profile: existing?.profile || null,
@@ -217,8 +239,8 @@ function createProfileCache() {
         lastFetched: Date.now(),
         isFetching: false
       };
-      state.profiles.set(pubkey, entry);
-      return state;
+      profiles.set(pubkey, entry);
+      return { ...state, profiles };
     });
   }
 
@@ -228,12 +250,13 @@ function createProfileCache() {
   function cleanExpired(): void {
     const now = Date.now();
     update(state => {
-      for (const [pubkey, entry] of state.profiles.entries()) {
+      const profiles = new Map(state.profiles);
+      for (const [pubkey, entry] of profiles.entries()) {
         if (now - entry.lastFetched >= CACHE_DURATION) {
-          state.profiles.delete(pubkey);
+          profiles.delete(pubkey);
         }
       }
-      return state;
+      return { ...state, profiles };
     });
   }
 

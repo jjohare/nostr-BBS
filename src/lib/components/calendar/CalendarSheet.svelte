@@ -188,10 +188,10 @@
   <div
     bind:this={sheetElement}
     class="fixed bottom-0 left-0 right-0 bg-base-100 dark:bg-base-200 rounded-t-2xl shadow-2xl z-50 flex flex-col"
-    style="height: {$height}vh; max-height: {$height}vh;"
+    style="height: {$height}dvh; height: {$height}vh; max-height: {$height}dvh; max-height: {$height}vh; padding-bottom: env(safe-area-inset-bottom, 0px);"
   >
-    <!-- Drag Handle -->
-    <div class="sheet-handle flex justify-center py-2 cursor-grab active:cursor-grabbing">
+    <!-- Drag Handle - increased touch target for mobile accessibility -->
+    <div class="sheet-handle flex justify-center py-4 cursor-grab active:cursor-grabbing min-h-[44px]">
       <div class="w-12 h-1 bg-base-content/30 rounded-full" />
     </div>
 
@@ -374,6 +374,7 @@
   .sheet-header {
     user-select: none;
     -webkit-user-select: none;
+    touch-action: pan-y;
   }
 
   /* Ensure proper stacking */
@@ -383,5 +384,12 @@
 
   .z-50 {
     z-index: 50;
+  }
+
+  /* Safe area support for notched devices */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .fixed.bottom-0 {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
   }
 </style>
