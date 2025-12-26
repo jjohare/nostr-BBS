@@ -38,14 +38,14 @@ blocking_issues:
       status: OPEN
 
     - id: BLOCK-003
-      severity: CRITICAL
+      severity: RESOLVED
       title: Placeholder URL in Embedding Workflow
       location: .github/workflows/generate-embeddings.yml:68
-      error: "wss://nosflare-relay-PLACEHOLDER.run.app"
-      impact: Embedding generation will fail
-      fix: "Replace with actual relay URL or set GitHub variable RELAY_URL"
+      error: "Previously: wss://nosflare-relay-PLACEHOLDER.run.app"
+      impact: Embedding generation was failing
+      fix: "Updated to use wss://nostr-relay-617806532906.us-central1.run.app"
       estimated_time: 2m
-      status: OPEN
+      status: RESOLVED
 
 pre_deployment:
   phase: preparation

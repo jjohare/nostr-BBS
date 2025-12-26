@@ -160,7 +160,7 @@ Configure these in: **Settings → Secrets and variables → Actions → Variabl
 
 ### Frontend Configuration
 - `RELAY_URL`: WebSocket URL of deployed Nostr relay
-  - Example: `wss://nosflare-relay-xxx.run.app`
+  - Example: `wss://nostr-relay-617806532906.us-central1.run.app`
   - Used by: `deploy-pages.yml`, `generate-embeddings.yml`
 
 - `EMBEDDING_API_URL`: HTTPS URL of deployed embedding API

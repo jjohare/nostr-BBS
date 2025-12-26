@@ -131,7 +131,7 @@ async def publish_event(ws, event: dict) -> bool:
 async def main():
     import os
 
-    relay_url = os.environ.get('NOSTR_RELAY_URL', 'wss://nosflare.solitary-paper-764d.workers.dev')
+    relay_url = os.environ.get('NOSTR_RELAY_URL', 'wss://nostr-relay-617806532906.us-central1.run.app')
 
     print(f"Connecting to {relay_url}...")
 
