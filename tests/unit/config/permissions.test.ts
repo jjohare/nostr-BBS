@@ -55,7 +55,7 @@ describe('Permissions', () => {
 				sectionRoles: []
 			};
 
-			expect(hasCapability(permissions, 'channel.create')).toBe(true);
+			expect(hasCapability(permissions, 'forum.create')).toBe(true);
 			expect(hasCapability(permissions, 'section.manage')).toBe(false);
 		});
 
@@ -300,7 +300,7 @@ describe('Permissions', () => {
 	describe('canCreateChannel', () => {
 		it('should allow channel creation when section allows it and user has capability', () => {
 			const sections = getSections();
-			const channelSection = sections.find((s) => s.features.allowChannelCreation);
+			const channelSection = sections.find((s) => s.allowForumCreation);
 
 			if (channelSection) {
 				const permissions: UserPermissions = {
@@ -316,7 +316,7 @@ describe('Permissions', () => {
 
 		it('should deny channel creation when section disallows it', () => {
 			const sections = getSections();
-			const noChannelSection = sections.find((s) => !s.features.allowChannelCreation);
+			const noChannelSection = sections.find((s) => !s.allowForumCreation);
 
 			if (noChannelSection) {
 				const permissions = createAdminPermissions('test');
@@ -326,7 +326,7 @@ describe('Permissions', () => {
 
 		it('should deny channel creation without capability', () => {
 			const sections = getSections();
-			const channelSection = sections.find((s) => s.features.allowChannelCreation);
+			const channelSection = sections.find((s) => s.allowForumCreation);
 
 			if (channelSection) {
 				const permissions = createDefaultPermissions('test');
@@ -338,7 +338,7 @@ describe('Permissions', () => {
 	describe('canViewCalendar', () => {
 		it('should allow viewing calendar when access is not none', () => {
 			const sections = getSections();
-			const calendarSection = sections.find((s) => s.features.calendar.access !== 'none');
+			const calendarSection = sections.find((s) => s.calendar.access !== 'none');
 
 			if (calendarSection) {
 				const permissions: UserPermissions = {
@@ -364,7 +364,7 @@ describe('Permissions', () => {
 	describe('canViewCalendarDetails', () => {
 		it('should allow full details with full access level', () => {
 			const sections = getSections();
-			const fullAccessSection = sections.find((s) => s.features.calendar.access === 'full');
+			const fullAccessSection = sections.find((s) => s.calendar.access === 'full');
 
 			if (fullAccessSection && fullAccessSection.access.autoApprove) {
 				const permissions = createDefaultPermissions('test');
@@ -374,7 +374,7 @@ describe('Permissions', () => {
 
 		it('should deny details with availability-only access', () => {
 			const sections = getSections();
-			const availSection = sections.find((s) => s.features.calendar.access === 'availability');
+			const availSection = sections.find((s) => s.calendar.access === 'availability');
 
 			if (availSection && availSection.access.autoApprove) {
 				const permissions = createDefaultPermissions('test');
@@ -385,7 +385,7 @@ describe('Permissions', () => {
 		it('should check cohort match for cohort-restricted access', () => {
 			const sections = getSections();
 			const cohortSection = sections.find(
-				(s) => s.features.calendar.access === 'cohort' && s.features.calendar.cohortRestricted
+				(s) => s.calendar.access === 'cohort' && s.calendar.cohortRestricted
 			);
 
 			if (cohortSection) {
@@ -409,7 +409,7 @@ describe('Permissions', () => {
 
 		it('should return false when event has no cohorts in cohort-restricted section', () => {
 			const sections = getSections();
-			const cohortSection = sections.find((s) => s.features.calendar.cohortRestricted);
+			const cohortSection = sections.find((s) => s.calendar.cohortRestricted);
 
 			if (cohortSection) {
 				const permissions = createAdminPermissions('test');
@@ -421,7 +421,7 @@ describe('Permissions', () => {
 	describe('canCreateCalendarEvent', () => {
 		it('should allow event creation when section allows it and user is member+', () => {
 			const sections = getSections();
-			const createSection = sections.find((s) => s.features.calendar.canCreate);
+			const createSection = sections.find((s) => s.calendar.canCreate);
 
 			if (createSection) {
 				const permissions: UserPermissions = {
@@ -439,7 +439,7 @@ describe('Permissions', () => {
 
 		it('should deny event creation for guests', () => {
 			const sections = getSections();
-			const createSection = sections.find((s) => s.features.calendar.canCreate);
+			const createSection = sections.find((s) => s.calendar.canCreate);
 
 			if (createSection && createSection.access.autoApprove) {
 				const permissions = createDefaultPermissions('test');

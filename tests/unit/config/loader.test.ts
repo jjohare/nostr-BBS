@@ -65,8 +65,8 @@ describe('Config Loader', () => {
 			const config = loadConfig();
 
 			expect(config).toBeDefined();
-			expect(config.app.name).toBe('Nostr BBS');
-			expect(config.sections.length).toBeGreaterThan(0);
+			expect(config.app.name).toBe('Fairfield - DreamLab - Cumbria');
+			expect(config.categories.length).toBeGreaterThan(0);
 			expect(config.roles.length).toBeGreaterThan(0);
 		});
 
@@ -75,27 +75,34 @@ describe('Config Loader', () => {
 				app: {
 					name: 'Custom App',
 					version: '2.0.0',
-					defaultSection: 'test-section'
+					defaultPath: '/test-category/test-section'
 				},
 				roles: [
 					{ id: 'guest', name: 'Guest', level: 0, description: 'Guest user' },
 					{ id: 'admin', name: 'Admin', level: 4, description: 'Admin user' }
 				],
 				cohorts: [{ id: 'test-cohort', name: 'Test Cohort', description: 'Test' }],
-				sections: [
+				categories: [
 					{
-						id: 'test-section',
-						name: 'Test Section',
-						description: 'Test',
-						icon: 'test',
+						id: 'test-category',
+						name: 'Test Category',
+						description: 'Test category',
+						icon: '📁',
 						order: 1,
-						access: { requiresApproval: false, defaultRole: 'guest', autoApprove: true },
-						features: {
-							showStats: true,
-							allowChannelCreation: false,
-							calendar: { access: 'full', canCreate: false }
-						},
-						ui: { color: '#000000' }
+						sections: [
+							{
+								id: 'test-section',
+								name: 'Test Section',
+								description: 'Test',
+								icon: 'test',
+								order: 1,
+								access: { requiresApproval: false, defaultRole: 'guest', autoApprove: true },
+								calendar: { access: 'full', canCreate: false },
+								ui: { color: '#000000' },
+								showStats: true,
+								allowForumCreation: false
+							}
+						]
 					}
 				],
 				calendarAccessLevels: [
@@ -124,7 +131,7 @@ describe('Config Loader', () => {
 			clearConfigCache();
 
 			const config = loadConfig();
-			expect(config.app.name).toBe('Nostr BBS');
+			expect(config.app.name).toBe('Fairfield - DreamLab - Cumbria');
 		});
 
 		it('should cache config after first load', () => {
@@ -158,12 +165,12 @@ describe('Config Loader', () => {
 
 		it('should validate config before saving', () => {
 			const invalidConfig = {
-				app: { name: 'Test', version: '1.0.0', defaultSection: 'test' },
-				sections: [],
+				app: { name: 'Test', version: '1.0.0', defaultPath: '/test' },
+				categories: [],
 				roles: []
 			} as SectionsConfig;
 
-			expect(() => saveConfig(invalidConfig)).toThrow('No sections defined');
+			expect(() => saveConfig(invalidConfig)).toThrow('No categories defined');
 		});
 
 		// Note: Testing non-browser environment is not feasible in vitest since
@@ -184,11 +191,11 @@ describe('Config Loader', () => {
 			expect(() => saveConfig(config)).toThrow('Missing app.name');
 		});
 
-		it('should require at least one section', () => {
+		it('should require at least one category', () => {
 			const config = loadConfig();
-			config.sections = [];
+			config.categories = [];
 
-			expect(() => saveConfig(config)).toThrow('No sections defined');
+			expect(() => saveConfig(config)).toThrow('No categories defined');
 		});
 
 		it('should require at least one role', () => {
@@ -200,7 +207,7 @@ describe('Config Loader', () => {
 
 		it('should validate section references to roles', () => {
 			const config = loadConfig();
-			config.sections[0].access.defaultRole = 'nonexistent-role' as any;
+			config.categories[0].sections[0].access.defaultRole = 'nonexistent-role' as any;
 
 			expect(() => saveConfig(config)).toThrow('references unknown role');
 		});
@@ -209,7 +216,7 @@ describe('Config Loader', () => {
 	describe('accessor functions', () => {
 		it('should get app config', () => {
 			const appConfig = getAppConfig();
-			expect(appConfig.name).toBe('Nostr BBS');
+			expect(appConfig.name).toBe('Fairfield - DreamLab - Cumbria');
 			expect(appConfig.version).toBeDefined();
 		});
 
@@ -299,12 +306,12 @@ describe('Config Loader', () => {
 		});
 
 		it('should return true when role has specific capability', () => {
-			expect(roleHasCapability('moderator', 'channel.create')).toBe(true);
+			expect(roleHasCapability('moderator', 'forum.create')).toBe(true);
 			expect(roleHasCapability('moderator', 'message.delete')).toBe(true);
 		});
 
 		it('should return false when role lacks capability', () => {
-			expect(roleHasCapability('guest', 'channel.create')).toBe(false);
+			expect(roleHasCapability('guest', 'forum.create')).toBe(false);
 		});
 
 		it('should return false for nonexistent role', () => {

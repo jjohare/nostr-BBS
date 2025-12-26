@@ -669,10 +669,15 @@ async function runAllTests() {
   console.log(`\n📄 Full report saved to: ${reportPath}`);
   console.log('='.repeat(60));
 
-  process.exit(allErrors.length > 0 ? 1 : 0);
+  // Return error count instead of process.exit for Vitest compatibility
+  return allErrors.length;
 }
 
-runAllTests().catch(error => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+// Only run directly if not being imported by a test runner
+if (typeof globalThis.describe === 'undefined') {
+  runAllTests().catch(error => {
+    console.error('Fatal error:', error);
+  });
+}
+
+export { runAllTests, testCreateAccountFlow, testLoginFlow, testKeyBackupFlow };

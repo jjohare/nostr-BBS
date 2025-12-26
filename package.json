@@ -41,6 +41,7 @@
     "@nostr-dev-kit/ndk-svelte": "^2.2.15",
     "@scure/bip32": "^1.4.0",
     "@scure/bip39": "^1.6.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "bip39": "^3.1.0",
     "dexie": "^4.0.8",
     "hnswlib-wasm": "^0.8.2",
