@@ -55,6 +55,21 @@
       tempKeys = { mnemonic: '', publicKey, privateKey };
       await authStore.setKeys(publicKey, privateKey);
       saveKeysToStorage(publicKey, privateKey);
+
+      // Check if user is already approved or admin - skip pending approval
+      try {
+        const { checkWhitelistStatus } = await import('$lib/nostr/whitelist');
+        const status = await checkWhitelistStatus(publicKey);
+        if (status.isApproved || status.isAdmin) {
+          // Already approved - go directly to chat
+          await goto(`${base}/chat`);
+          return;
+        }
+      } catch (e) {
+        console.warn('[AuthFlow] Failed to check whitelist status:', e);
+        // Fall through to pending approval
+      }
+
       currentStep = 'pending-approval';
     } else {
       currentStep = 'signup';

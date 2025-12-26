@@ -80,10 +80,11 @@ function createReactionStore() {
   /**
    * Convert NostrEvent to NDKEvent
    */
-  function nostrEventToNDK(event: NostrEvent): NDKEvent {
+  function nostrEventToNDK(event: NostrEvent): NDKEvent | null {
     const ndkInstance = ndk();
     if (!ndkInstance) {
-      throw new Error('NDK not initialized');
+      console.debug('[Reactions] NDK not initialized, skipping event conversion');
+      return null;
     }
 
     const ndkEvent = new NDKEvent(ndkInstance);
@@ -149,7 +150,9 @@ function createReactionStore() {
 
             if (!isDuplicate) {
               const updated = [...existing, reactionData];
-              state.reactionsByMessage.set(reactionData.eventId, updated);
+              const reactionsByMessage = new Map(state.reactionsByMessage);
+              reactionsByMessage.set(reactionData.eventId, updated);
+              return { ...state, reactionsByMessage, loading: false };
             }
 
             return { ...state, loading: false };
@@ -198,10 +201,12 @@ function createReactionStore() {
           r => r.reactorPubkey !== optimisticReaction.reactorPubkey
         );
 
-        state.reactionsByMessage.set(messageId, [...filtered, optimisticReaction]);
-        state.optimisticReactions.set(optimisticId, optimisticReaction);
+        const reactionsByMessage = new Map(state.reactionsByMessage);
+        reactionsByMessage.set(messageId, [...filtered, optimisticReaction]);
+        const optimisticReactions = new Map(state.optimisticReactions);
+        optimisticReactions.set(optimisticId, optimisticReaction);
 
-        return { ...state };
+        return { ...state, reactionsByMessage, optimisticReactions };
       });
 
       try {
@@ -214,6 +219,9 @@ function createReactionStore() {
         );
 
         const ndkEvent = nostrEventToNDK(event);
+        if (!ndkEvent) {
+          throw new Error('NDK not connected');
+        }
         await publishEvent(ndkEvent);
 
         // Replace optimistic with real reaction
@@ -228,10 +236,12 @@ function createReactionStore() {
             r => r.reactionEventId !== optimisticId
           );
 
-          state.reactionsByMessage.set(messageId, [...withoutOptimistic, realReaction]);
-          state.optimisticReactions.delete(optimisticId);
+          const reactionsByMessage = new Map(state.reactionsByMessage);
+          reactionsByMessage.set(messageId, [...withoutOptimistic, realReaction]);
+          const optimisticReactions = new Map(state.optimisticReactions);
+          optimisticReactions.delete(optimisticId);
 
-          return { ...state };
+          return { ...state, reactionsByMessage, optimisticReactions };
         });
 
       } catch (error) {
@@ -240,11 +250,15 @@ function createReactionStore() {
           const existing = state.reactionsByMessage.get(messageId) || [];
           const filtered = existing.filter(r => r.reactionEventId !== optimisticId);
 
-          state.reactionsByMessage.set(messageId, filtered);
-          state.optimisticReactions.delete(optimisticId);
+          const reactionsByMessage = new Map(state.reactionsByMessage);
+          reactionsByMessage.set(messageId, filtered);
+          const optimisticReactions = new Map(state.optimisticReactions);
+          optimisticReactions.delete(optimisticId);
 
           return {
             ...state,
+            reactionsByMessage,
+            optimisticReactions,
             error: error instanceof Error ? error.message : 'Failed to add reaction'
           };
         });
@@ -269,9 +283,10 @@ function createReactionStore() {
         const existing = state.reactionsByMessage.get(messageId) || [];
         const filtered = existing.filter(r => r.reactorPubkey !== auth.publicKey);
 
-        state.reactionsByMessage.set(messageId, filtered);
+        const reactionsByMessage = new Map(state.reactionsByMessage);
+        reactionsByMessage.set(messageId, filtered);
 
-        return { ...state };
+        return { ...state, reactionsByMessage };
       });
 
       // Note: NIP-25 doesn't specify reaction deletion
@@ -313,7 +328,9 @@ function createReactionStore() {
 
           if (!isDuplicate) {
             const updated = [...existing, reactionData];
-            state.reactionsByMessage.set(reactionData.eventId, updated);
+            const reactionsByMessage = new Map(state.reactionsByMessage);
+            reactionsByMessage.set(reactionData.eventId, updated);
+            return { ...state, reactionsByMessage };
           }
 
           return { ...state };
@@ -323,11 +340,12 @@ function createReactionStore() {
       // Track subscription
       update(state => {
         const subs = state.activeSubscriptions.get(relayUrl) || [];
-        state.activeSubscriptions.set(relayUrl, [
+        const activeSubscriptions = new Map(state.activeSubscriptions);
+        activeSubscriptions.set(relayUrl, [
           ...subs,
           { subId, subscription }
         ]);
-        return { ...state };
+        return { ...state, activeSubscriptions };
       });
     },
 
@@ -344,8 +362,9 @@ function createReactionStore() {
         });
 
         update(s => {
-          s.activeSubscriptions.delete(relayUrl);
-          return { ...s };
+          const activeSubscriptions = new Map(s.activeSubscriptions);
+          activeSubscriptions.delete(relayUrl);
+          return { ...s, activeSubscriptions };
         });
       }
     },
@@ -408,8 +427,7 @@ function createReactionStore() {
       });
 
       update(s => {
-        s.activeSubscriptions.clear();
-        return { ...s };
+        return { ...s, activeSubscriptions: new Map() };
       });
     }
   };
