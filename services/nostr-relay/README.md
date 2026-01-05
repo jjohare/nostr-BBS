@@ -1,25 +1,117 @@
-# Nostr Relay Service
+# Fairfield Nostr Relay
 
-Private whitelist-only Nostr relay with better-sqlite3 storage and HTTP API endpoints.
+A whitelist-based Nostr relay with SQLite persistence, NIP-16/33/98 support, and did:nostr identity resolution.
 
 ## Features
 
-- Private whitelist-only access control
-- SQLite storage with better-sqlite3 (disk-based, no memory limits)
-- HTTP API for health checks and whitelist verification
-- WebSocket for real-time Nostr events
-- WAL mode for concurrent read performance
-- NIP-01 and NIP-11 support
-- Rate limiting and connection management
+- **Whitelist-Controlled Access** - Cohort-based access control with expiring memberships
+- **SQLite Persistence** - Production-grade storage with better-sqlite3 and WAL mode
+- **NIP-16 Event Treatment** - Proper handling of replaceable, ephemeral, and parameterized events
+- **NIP-33 Parameterized Replaceable** - d-tag based event replacement for articles and profiles
+- **NIP-98 HTTP Auth** - Schnorr signature authentication for HTTP endpoints
+- **did:nostr Identity** - Decentralised identity resolution
+- **Rate Limiting** - Configurable per-IP connection and event limits
 
 ## Quick Start
 
 ```bash
-cd services/nostr-relay
+# Install dependencies
 npm install
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your settings
+
+# Run in development
+npm run dev
+
+# Build and run production
 npm run build
 npm start
 ```
+
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph Clients
+        C1[Nostr Client]
+        C2[HTTP Client]
+    end
+
+    subgraph "Fairfield Relay"
+        WS[WebSocket Server]
+        HTTP[HTTP Server]
+        H[Handlers]
+        WL[Whitelist]
+        RL[Rate Limiter]
+        NIP16[NIP-16 Treatment]
+        NIP98[NIP-98 Auth]
+        DB[(SQLite DB)]
+    end
+
+    C1 -->|ws://| WS
+    C2 -->|http://| HTTP
+
+    WS --> H
+    HTTP --> NIP98
+    H --> WL
+    H --> RL
+    H --> NIP16
+    NIP16 --> DB
+    WL --> DB
+```
+
+## Supported NIPs
+
+| NIP | Description | Implementation |
+|-----|-------------|----------------|
+| NIP-01 | Basic Protocol | Full event/subscription handling |
+| NIP-11 | Relay Information | `/.well-known/nostr.json` |
+| NIP-16 | Event Treatment | Replaceable, ephemeral, regular events |
+| NIP-33 | Parameterized Replaceable | d-tag based replacement |
+| NIP-98 | HTTP Auth | Schnorr signature authentication |
+
+## Event Kind Ranges
+
+```mermaid
+graph LR
+    subgraph Regular["Regular (0-9999)"]
+        K1[Kind 1: Note]
+        K4[Kind 4: DM]
+    end
+
+    subgraph Replaceable["Replaceable (10000-19999)"]
+        K0[Kind 0: Metadata]
+        K3[Kind 3: Contacts]
+        K10002[Kind 10002: Relay List]
+    end
+
+    subgraph Ephemeral["Ephemeral (20000-29999)"]
+        K20000[Kind 20000+: Broadcast Only]
+    end
+
+    subgraph Parameterized["Parameterized (30000-39999)"]
+        K30023[Kind 30023: Long-form]
+    end
+
+    Regular --> DB[(Stored)]
+    Replaceable --> DB
+    Ephemeral -.->|Not Stored| Broadcast((Broadcast))
+    Parameterized --> DB
+```
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8080` | HTTP/WebSocket port |
+| `HOST` | `0.0.0.0` | Bind address |
+| `SQLITE_DATA_DIR` | `./data` | Database directory |
+| `WHITELIST_PUBKEYS` | - | Comma-separated allowed pubkeys |
+| `ADMIN_PUBKEYS` | - | Comma-separated admin pubkeys |
+| `RATE_LIMIT_EVENTS_PER_SEC` | `10` | Max events per second per IP |
+| `RATE_LIMIT_MAX_CONNECTIONS` | `10` | Max concurrent connections per IP |
 
 ## API Endpoints
 
@@ -29,120 +121,103 @@ GET /health
 GET /
 ```
 
-Returns relay status and statistics:
-```json
-{
-  "status": "healthy",
-  "version": "2.1.0",
-  "database": "better-sqlite3",
-  "events": 1234,
-  "whitelisted": 10,
-  "dbSizeBytes": 1048576,
-  "uptime": 3600
-}
-```
+Returns relay status, version, and statistics.
 
 ### Whitelist Check
 ```
 GET /api/check-whitelist?pubkey=<64-char-hex>
 ```
 
-Returns whitelist status for a pubkey:
-```json
-{
-  "isWhitelisted": true,
-  "isAdmin": false,
-  "cohorts": ["approved", "moomaa-tribe"],
-  "verifiedAt": 1702652400000,
-  "source": "relay"
-}
+Check if a pubkey is whitelisted and get cohort information.
+
+### NIP-98 Authenticated
+```
+GET /api/authenticated
+Authorization: Nostr <base64-encoded-kind-27235-event>
 ```
 
-### Relay Info (NIP-11)
+Example authenticated endpoint demonstrating NIP-98.
+
+### Relay Information (NIP-11)
 ```
 GET /.well-known/nostr.json
+Accept: application/nostr+json
 ```
 
-Or request with `Accept: application/nostr+json` header.
+## WebSocket Protocol
 
-### WebSocket
-```
-ws://localhost:8080
-```
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Relay
+    participant DB
 
-Standard Nostr relay protocol (NIP-01).
+    Client->>Relay: ["EVENT", event]
+    Relay->>Relay: Validate & Check Whitelist
+    Relay->>Relay: NIP-16 Treatment Check
+    alt Ephemeral Event
+        Relay-->>Client: ["OK", id, true, ""]
+        Relay-->>Relay: Broadcast (no store)
+    else Regular/Replaceable
+        Relay->>DB: Save Event
+        Relay-->>Client: ["OK", id, true, ""]
+        Relay-->>Relay: Broadcast
+    end
 
-## Configuration
+    Client->>Relay: ["REQ", sub_id, filters...]
+    Relay->>DB: Query Events
+    DB-->>Relay: Matching Events
+    loop Each Event
+        Relay-->>Client: ["EVENT", sub_id, event]
+    end
+    Relay-->>Client: ["EOSE", sub_id]
 
-Environment variables:
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | 8080 | Server port |
-| `HOST` | 0.0.0.0 | Bind address |
-| `SQLITE_DATA_DIR` | ./data | Database directory |
-| `WHITELIST_PUBKEYS` | (empty) | Comma-separated pubkeys |
-| `ADMIN_PUBKEYS` | (empty) | Admin pubkeys (have admin cohort) |
-
-Empty whitelist enables development mode (all pubkeys allowed).
-
-## Database
-
-SQLite with better-sqlite3:
-
-- WAL mode for concurrent reads
-- 64MB cache
-- Automatic table creation
-- Whitelist table with cohort support
-
-Schema:
-```sql
-CREATE TABLE events (
-  id TEXT PRIMARY KEY,
-  pubkey TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  kind INTEGER NOT NULL,
-  tags TEXT NOT NULL,
-  content TEXT NOT NULL,
-  sig TEXT NOT NULL,
-  received_at INTEGER
-);
-
-CREATE TABLE whitelist (
-  pubkey TEXT PRIMARY KEY,
-  cohorts TEXT DEFAULT '[]',
-  added_at INTEGER,
-  added_by TEXT,
-  expires_at INTEGER,
-  notes TEXT
-);
+    Client->>Relay: ["CLOSE", sub_id]
+    Relay-->>Relay: Remove Subscription
 ```
 
-## Docker
-
-Build and run:
-```bash
-docker build -t nostr-relay .
-docker run -d -p 8080:8080 -v $(pwd)/data:/data nostr-relay
-```
-
-## Cloud Run Deployment
+## Development
 
 ```bash
-gcloud run deploy nostr-relay \
-  --image gcr.io/PROJECT/nostr-relay:latest \
-  --platform managed \
-  --region us-central1 \
-  --port 8080 \
-  --add-volume name=data,type=cloud-storage,bucket=PROJECT-nostr-data \
-  --add-volume-mount volume=data,mount-path=/data \
-  --set-env-vars "SQLITE_DATA_DIR=/data,WHITELIST_PUBKEYS=pubkey1,pubkey2" \
-  --max-instances 1 \
-  --memory 512Mi
+# Run tests
+npm test
+
+# Watch mode
+npm run test:watch
+
+# Coverage report
+npm run test:coverage
+
+# Build TypeScript
+npm run build
 ```
 
-Use `--max-instances 1` to prevent SQLite write conflicts.
+## Project Structure
 
-## Version
+```
+nostr-relay/
+├── src/
+│   ├── server.ts      # HTTP/WebSocket server
+│   ├── handlers.ts    # Message handlers
+│   ├── db.ts          # SQLite database
+│   ├── whitelist.ts   # Access control
+│   ├── rateLimit.ts   # Rate limiting
+│   ├── nip16.ts       # Event treatment
+│   ├── nip98.ts       # HTTP auth
+│   └── did-nostr.ts   # Identity resolution
+├── tests/
+│   └── unit/          # Unit tests
+├── data/              # SQLite database (gitignored)
+└── dist/              # Compiled output
+```
 
-2.1.0 - better-sqlite3 with HTTP API
+## Security Considerations
+
+- **Whitelist Required**: By default, only whitelisted pubkeys can publish events
+- **Signature Verification**: All events verified using Schnorr signatures
+- **Rate Limiting**: Per-IP limits prevent abuse
+- **NIP-98**: HTTP endpoints can require cryptographic authentication
+
+## Licence
+
+MIT

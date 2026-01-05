@@ -1,7 +1,7 @@
-export default {
-  preset: 'ts-jest/presets/default-esm',
+/** @type {import('ts-jest').JestConfigWithTsJest} */
+module.exports = {
+  preset: 'ts-jest',
   testEnvironment: 'node',
-  extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
@@ -9,7 +9,14 @@ export default {
     '^.+\\.tsx?$': [
       'ts-jest',
       {
-        useESM: true,
+        useESM: false,
+        tsconfig: {
+          module: 'commonjs',
+          target: 'ES2020',
+          moduleResolution: 'node',
+          esModuleInterop: true,
+          skipLibCheck: true,
+        },
       },
     ],
   },
@@ -21,7 +28,7 @@ export default {
     'src/**/*.{ts,js}',
     '!src/**/*.d.ts',
   ],
-  coverageThresholds: {
+  coverageThreshold: {
     global: {
       branches: 75,
       functions: 80,

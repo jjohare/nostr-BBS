@@ -2,6 +2,7 @@ import { WebSocket } from 'ws';
 import { NostrDatabase, NostrEvent } from './db';
 import { Whitelist } from './whitelist';
 import { RateLimiter } from './rateLimit';
+import { getEventTreatment, getReplacementKey, getDTagValue } from './nip16';
 import crypto from 'crypto';
 import { schnorr } from '@noble/curves/secp256k1';
 
@@ -46,8 +47,7 @@ export class NostrHandlers {
         default:
           this.sendNotice(ws, `Unknown message type: ${type}`);
       }
-    } catch (error) {
-      console.error('Error handling message:', error);
+    } catch {
       this.sendNotice(ws, 'Error processing message');
     }
   }
@@ -84,7 +84,25 @@ export class NostrHandlers {
       return;
     }
 
-    const saved = await this.db.saveEvent(event);
+    // NIP-16: Handle event based on its treatment type
+    const treatment = getEventTreatment(event.kind);
+
+    if (treatment === 'ephemeral') {
+      // Ephemeral events: broadcast but don't store
+      this.sendOK(ws, event.id, true, '');
+      this.broadcastEvent(event);
+      return;
+    }
+
+    // Get replacement key for replaceable events
+    const replacementKey = getReplacementKey(event);
+
+    // Save event (db handles replacement logic)
+    const saved = await this.db.saveEvent(event, {
+      treatment,
+      replacementKey,
+      dTag: getDTagValue(event)
+    });
 
     if (saved) {
       this.sendOK(ws, event.id, true, '');
@@ -153,8 +171,7 @@ export class NostrHandlers {
 
       const isValid = await schnorr.verify(signature, messageHash, publicKey);
       return isValid;
-    } catch (error) {
-      console.error('Signature verification error:', error);
+    } catch {
       return false;
     }
   }
@@ -162,7 +179,7 @@ export class NostrHandlers {
   private hexToBytes(hex: string): Uint8Array {
     const bytes = new Uint8Array(hex.length / 2);
     for (let i = 0; i < hex.length; i += 2) {
-      bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
+      bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
     }
     return bytes;
   }

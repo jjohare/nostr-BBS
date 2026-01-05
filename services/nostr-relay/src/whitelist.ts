@@ -13,14 +13,11 @@ export class Whitelist {
     for (const pubkey of pubkeys) {
       this.allowedPubkeys.add(pubkey);
     }
-
-    console.log(`Whitelist loaded with ${this.allowedPubkeys.size} pubkeys`);
   }
 
   isAllowed(pubkey: string): boolean {
     // If whitelist is empty, allow all (development mode)
     if (this.allowedPubkeys.size === 0) {
-      console.warn('WARNING: Empty whitelist - allowing all pubkeys (development mode)');
       return true;
     }
 

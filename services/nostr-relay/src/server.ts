@@ -4,6 +4,7 @@ import { NostrDatabase } from './db';
 import { Whitelist } from './whitelist';
 import { RateLimiter } from './rateLimit';
 import { NostrHandlers } from './handlers';
+import { hasNostrAuth, verifyNostrAuth, pubkeyToDidNostr } from './nip98';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -56,12 +57,13 @@ class NostrRelay {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         status: 'healthy',
-        version: '2.1.0',
+        version: '2.2.0',
         database: 'better-sqlite3',
         events: stats.eventCount,
         whitelisted: stats.whitelistCount,
         dbSizeBytes: stats.dbSizeBytes,
-        uptime: process.uptime()
+        uptime: process.uptime(),
+        nips: [1, 11, 16, 33, 98]
       }));
       return;
     }
@@ -105,17 +107,53 @@ class NostrRelay {
       return;
     }
 
+    // NIP-98 authenticated endpoint example
+    if (url.pathname === '/api/authenticated') {
+      const headers: Record<string, string | string[] | undefined> = {};
+      for (const [key, value] of Object.entries(req.headers)) {
+        headers[key] = value;
+      }
+
+      if (!hasNostrAuth(headers)) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'NIP-98 authentication required' }));
+        return;
+      }
+
+      const authResult = await verifyNostrAuth({
+        method: req.method || 'GET',
+        url: req.url || '/',
+        headers,
+        protocol: 'http',
+        hostname: req.headers.host
+      });
+
+      if (authResult.error) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: authResult.error }));
+        return;
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        authenticated: true,
+        pubkey: authResult.pubkey,
+        didNostr: authResult.didNostr
+      }));
+      return;
+    }
+
     // Relay info (NIP-11)
     if (url.pathname === '/.well-known/nostr.json' ||
         (req.headers.accept?.includes('application/nostr+json'))) {
       res.writeHead(200, { 'Content-Type': 'application/nostr+json' });
       res.end(JSON.stringify({
         name: 'Fairfield Nostr Relay',
-        description: 'Private whitelist-only relay',
+        description: 'Private whitelist-only relay with NIP-16/98 support',
         pubkey: process.env.ADMIN_PUBKEYS?.split(',')[0] || '',
-        supported_nips: [1, 11],
+        supported_nips: [1, 11, 16, 33, 98],
         software: 'fairfield-nostr-relay',
-        version: '2.1.0',
+        version: '2.2.0',
         limitation: {
           auth_required: false,
           payment_required: false,
@@ -135,10 +173,8 @@ class NostrRelay {
 
     this.wss.on('connection', (ws: ExtendedWebSocket, req: IncomingMessage) => {
       const ip = this.extractIP(req);
-      console.log(`New client connected from ${ip}`);
 
       if (!this.handlers.trackConnection(ws, ip)) {
-        console.log(`Connection rejected from ${ip} (rate limit exceeded)`);
         ws.close(1008, 'rate limit exceeded: too many concurrent connections');
         return;
       }
@@ -149,24 +185,15 @@ class NostrRelay {
       });
 
       ws.on('close', () => {
-        console.log(`Client disconnected from ${ip}`);
         this.handlers.handleDisconnect(ws);
       });
 
-      ws.on('error', (error: Error) => {
-        console.error(`WebSocket error from ${ip}:`, error);
+      ws.on('error', () => {
+        // Connection error handled by close event
       });
     });
 
-    this.server.listen(PORT, HOST, () => {
-      const stats = this.rateLimiter.getStats();
-      console.log(`Nostr relay listening on http://${HOST}:${PORT}`);
-      console.log(`WebSocket: ws://${HOST}:${PORT}`);
-      console.log(`Health: http://${HOST}:${PORT}/health`);
-      console.log(`Whitelist API: http://${HOST}:${PORT}/api/check-whitelist`);
-      console.log(`Whitelist mode: ${this.whitelist.list().length > 0 ? 'ENABLED' : 'DEVELOPMENT (all allowed)'}`);
-      console.log(`Rate limits: ${stats.config.eventsPerSecond} events/sec, ${stats.config.maxConcurrentConnections} max connections per IP`);
-    });
+    this.server.listen(PORT, HOST);
   }
 
   private extractIP(req: IncomingMessage): string {
@@ -189,25 +216,21 @@ class NostrRelay {
     this.server.close();
     this.rateLimiter.destroy();
     await this.db.close();
-    console.log('Relay stopped');
   }
 }
 
 const relay = new NostrRelay();
 
-relay.start().catch((error) => {
-  console.error('Failed to start relay:', error);
+relay.start().catch(() => {
   process.exit(1);
 });
 
 process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down...');
   await relay.stop();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
-  console.log('SIGINT received, shutting down...');
   await relay.stop();
   process.exit(0);
 });

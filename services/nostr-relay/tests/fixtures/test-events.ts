@@ -1,7 +1,7 @@
 /**
  * Test event fixtures
  */
-import { createTestEvent, TEST_ADMIN, TEST_USER_1, TEST_USER_2 } from './test-keys.js';
+import { createTestEvent, TEST_ADMIN, TEST_USER_1, TEST_USER_2 } from './test-keys';
 
 /**
  * Sample text note events (kind 1)

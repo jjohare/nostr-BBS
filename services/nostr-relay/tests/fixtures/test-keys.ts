@@ -1,9 +1,9 @@
 /**
  * Test cryptographic keys and identities
+ * Uses nostr-tools for Nostr-specific crypto operations
  */
-import { schnorr } from '@noble/curves/secp256k1';
-import { sha256 } from '@noble/hashes/sha256';
-import { bytesToHex } from '@noble/hashes/utils';
+import { getPublicKey, generateSecretKey, finalizeEvent, getEventHash } from 'nostr-tools';
+import { bytesToHex, hexToBytes } from '@noble/curves/abstract/utils';
 
 export interface TestIdentity {
   privateKey: string;
@@ -15,52 +15,20 @@ export interface TestIdentity {
  * Generate a test keypair
  */
 export function generateTestKey(): TestIdentity {
-  const privateKeyBytes = schnorr.utils.randomPrivateKey();
-  const publicKeyBytes = schnorr.getPublicKey(privateKeyBytes);
+  const privateKeyBytes = generateSecretKey();
+  const publicKey = getPublicKey(privateKeyBytes);
 
   return {
     privateKey: bytesToHex(privateKeyBytes),
-    publicKey: bytesToHex(publicKeyBytes),
+    publicKey,
   };
 }
 
 /**
- * Sign a Nostr event
- */
-export function signEvent(event: any, privateKey: string): string {
-  const serialized = JSON.stringify([
-    0,
-    event.pubkey,
-    event.created_at,
-    event.kind,
-    event.tags,
-    event.content,
-  ]);
-
-  const hash = sha256(new TextEncoder().encode(serialized));
-  const privateKeyBytes = new Uint8Array(
-    privateKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))
-  );
-
-  const signature = schnorr.sign(hash, privateKeyBytes);
-  return bytesToHex(signature);
-}
-
-/**
- * Generate event ID
+ * Generate event ID (using nostr-tools)
  */
 export function generateEventId(event: any): string {
-  const serialized = JSON.stringify([
-    0,
-    event.pubkey,
-    event.created_at,
-    event.kind,
-    event.tags,
-    event.content,
-  ]);
-
-  const hash = sha256(new TextEncoder().encode(serialized));
-  return bytesToHex(hash);
+  return getEventHash(event);
 }
 
 // Pre-generated test identities
@@ -75,6 +43,7 @@ export const TEST_USER_3: TestIdentity = generateTestKey();
 
 /**
  * Create a test Nostr event
+ * Uses nostr-tools finalizeEvent for proper signing
  */
 export function createTestEvent(
   identity: TestIdentity,
@@ -82,20 +51,18 @@ export function createTestEvent(
   content: string = 'Test event',
   tags: string[][] = []
 ): any {
-  const event = {
-    pubkey: identity.publicKey,
-    created_at: Math.floor(Date.now() / 1000),
+  const eventTemplate = {
     kind,
+    created_at: Math.floor(Date.now() / 1000),
     tags,
     content,
   };
 
-  const id = generateEventId(event);
-  const sig = signEvent(event, identity.privateKey);
+  // Convert hex private key to Uint8Array for nostr-tools
+  const privateKeyBytes = hexToBytes(identity.privateKey);
 
-  return {
-    ...event,
-    id,
-    sig,
-  };
+  // finalizeEvent adds id, pubkey, and sig
+  const signedEvent = finalizeEvent(eventTemplate, privateKeyBytes);
+
+  return signedEvent;
 }

@@ -68,13 +68,68 @@ export class NostrDatabase {
       CREATE INDEX IF NOT EXISTS idx_whitelist_cohorts ON whitelist(cohorts);
     `);
 
-    console.log(`Database initialized at ${this.dbPath} (better-sqlite3)`);
   }
 
-  async saveEvent(event: NostrEvent): Promise<boolean> {
+  async saveEvent(
+    event: NostrEvent,
+    options?: {
+      treatment?: 'regular' | 'replaceable' | 'ephemeral' | 'parameterized_replaceable';
+      replacementKey?: string | null;
+      dTag?: string | null;
+    }
+  ): Promise<boolean> {
     if (!this.db) return false;
 
+    const treatment = options?.treatment || 'regular';
+
     try {
+      // NIP-16: Handle replaceable events
+      if (treatment === 'replaceable') {
+        // Delete older event with same pubkey+kind
+        const deleteStmt = this.db.prepare(`
+          DELETE FROM events
+          WHERE pubkey = ? AND kind = ? AND created_at < ?
+        `);
+        deleteStmt.run(event.pubkey, event.kind, event.created_at);
+
+        // Check if newer event exists
+        const checkStmt = this.db.prepare(`
+          SELECT 1 FROM events
+          WHERE pubkey = ? AND kind = ? AND created_at >= ?
+          LIMIT 1
+        `);
+        const exists = checkStmt.get(event.pubkey, event.kind, event.created_at);
+        if (exists) {
+          // Newer event exists, don't insert
+          return false;
+        }
+      }
+
+      // NIP-33: Handle parameterized replaceable events
+      if (treatment === 'parameterized_replaceable') {
+        const dTag = options?.dTag || '';
+
+        // Delete older event with same pubkey+kind+d-tag
+        const deleteStmt = this.db.prepare(`
+          DELETE FROM events
+          WHERE pubkey = ? AND kind = ? AND created_at < ?
+          AND json_extract(tags, '$') LIKE ?
+        `);
+        deleteStmt.run(event.pubkey, event.kind, event.created_at, `%["d","${dTag}"%`);
+
+        // Check if newer event exists
+        const checkStmt = this.db.prepare(`
+          SELECT 1 FROM events
+          WHERE pubkey = ? AND kind = ? AND created_at >= ?
+          AND json_extract(tags, '$') LIKE ?
+          LIMIT 1
+        `);
+        const exists = checkStmt.get(event.pubkey, event.kind, event.created_at, `%["d","${dTag}"%`);
+        if (exists) {
+          return false;
+        }
+      }
+
       const stmt = this.db.prepare(`
         INSERT OR IGNORE INTO events (id, pubkey, created_at, kind, tags, content, sig)
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -91,8 +146,7 @@ export class NostrDatabase {
       );
 
       return result.changes > 0;
-    } catch (error) {
-      console.error('Error saving event:', error);
+    } catch {
       return false;
     }
   }
@@ -142,13 +196,11 @@ export class NostrDatabase {
           const tagName = key.substring(1);
 
           if (!/^[a-zA-Z0-9_-]+$/.test(tagName)) {
-            console.warn(`Invalid tag name ignored: ${tagName}`);
             continue;
           }
 
           for (const value of values) {
             if (typeof value !== 'string' || value.length === 0) {
-              console.warn(`Invalid tag value ignored for tag ${tagName}`);
               continue;
             }
 
@@ -190,8 +242,8 @@ export class NostrDatabase {
             sig: row.sig,
           });
         }
-      } catch (error) {
-        console.error('Query error:', error);
+      } catch {
+        // Query failed, continue with other filters
       }
     }
 
@@ -259,8 +311,7 @@ export class NostrDatabase {
 
       stmt.run(pubkey, JSON.stringify(cohorts), addedBy, expiresAt || null, notes || null);
       return true;
-    } catch (error) {
-      console.error('Error adding to whitelist:', error);
+    } catch {
       return false;
     }
   }
@@ -272,8 +323,7 @@ export class NostrDatabase {
       const stmt = this.db.prepare('DELETE FROM whitelist WHERE pubkey = ?');
       stmt.run(pubkey);
       return true;
-    } catch (error) {
-      console.error('Error removing from whitelist:', error);
+    } catch {
       return false;
     }
   }
