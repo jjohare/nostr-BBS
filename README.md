@@ -1,11 +1,34 @@
+<div align="center">
+
 # Nostr BBS
 
-A decentralized community bulletin board system built on the Nostr protocol. Features NIP-52 calendar events, NIP-28 public chat channels, NIP-17/59 encrypted direct messages, and cohort-based access control. Fully serverless architecture with SvelteKit PWA on GitHub Pages and Google Cloud Platform backend.
+### A Decentralized Community Platform Built on Open Protocols
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Nostr](https://img.shields.io/badge/Nostr-Protocol-purple.svg)](https://nostr.com)
+[![SOLID](https://img.shields.io/badge/SOLID-WebID-green.svg)](https://solidproject.org)
 [![SvelteKit](https://img.shields.io/badge/SvelteKit-5.x-orange.svg)](https://kit.svelte.dev)
 [![Google Cloud](https://img.shields.io/badge/Google_Cloud-Platform-blue.svg)](https://cloud.google.com)
+
+**Nostr BBS** is a fully decentralized bulletin board system combining the censorship-resistant Nostr protocol with SOLID personal data pods. Features end-to-end encrypted messaging, AI-powered semantic search, calendar events with RSVP, and cohort-based access control—all running on a serverless architecture with zero infrastructure costs.
+
+[Features](#features) • [Quick Start](#quick-start) • [Architecture](#architecture) • [Documentation](#documentation) • [Contributing](#contributing)
+
+</div>
+
+---
+
+## Overview
+
+Nostr BBS provides communities with a self-sovereign communication platform where users control their own data and identity. Built on open standards (Nostr NIPs, SOLID/WebID, DIDs), it offers:
+
+- **True Decentralization** — No central authority controls messages, identity, or access
+- **Privacy by Design** — End-to-end encryption with NIP-44/59 gift-wrapped DMs
+- **Data Sovereignty** — SOLID pod integration for personal data ownership
+- **Zero Cost Hosting** — Runs entirely on cloud free tiers (GCP, GitHub Pages)
+- **Offline-First PWA** — Full functionality without connectivity
+
+---
 
 ## Screenshots
 
@@ -17,15 +40,35 @@ A decentralized community bulletin board system built on the Nostr protocol. Fea
 | **Profile** | **Semantic Search** | **Admin Dashboard** |
 | ![Profile](docs/screenshots/profile.png) | ![Semantic Search](docs/screenshots/semantic-search.png) | ![Admin Dashboard](docs/screenshots/admin-dashboard.png) |
 
+---
+
 ## Features
 
-- **Public Chat Channels** - NIP-28 group messaging with cohort-based access control
-- **Calendar Events** - NIP-52 event scheduling with RSVP support
-- **Encrypted DMs** - NIP-17/59 gift-wrapped private messages
-- **Semantic Vector Search** - AI-powered similarity search with HNSW indexing (100k+ messages)
-- **PWA Support** - Installable app with offline message queue
-- **Serverless Architecture** - Zero infrastructure costs on free tier
-- **Cohort-Based Access** - Business, members, and admin roles
+### Core Communication
+- **Public Chat Channels** — NIP-28 group messaging with cohort-based access control
+- **Encrypted Direct Messages** — NIP-17/59 gift-wrapped private messaging with metadata protection
+- **Calendar Events** — NIP-52 event scheduling with RSVP and channel integration
+- **Reactions & Threading** — NIP-25 emoji reactions and message threading
+
+### Decentralized Identity
+- **SOLID/WebID Integration** — Personal data pods for true data ownership
+- **DID-Nostr Bridge** — Decentralized identifiers linked to Nostr keypairs
+- **NIP-98 HTTP Auth** — Cryptographic authentication for API endpoints
+- **BIP-39 Key Management** — Mnemonic-based key generation and recovery
+
+### Advanced Features
+- **Semantic Vector Search** — AI-powered similarity search with HNSW indexing (100k+ messages)
+- **Link Previews** — Rich URL previews with dedicated microservice
+- **NIP-16 Ephemeral Events** — Temporary events that don't persist
+- **Offline Message Queue** — Background sync when connectivity returns
+- **PWA Support** — Installable app with service worker caching
+
+### Administration
+- **Cohort-Based Access** — Business, members, and admin role hierarchies
+- **Section Management** — Configurable category/section/forum structure
+- **Moderation Tools** — Message deletion, pinning, and user management
+
+---
 
 ## Quick Start
 
@@ -55,28 +98,23 @@ npm run dev
 # Access: http://localhost:5173
 ```
 
-### Deploy to Production
+### Production Deployment
 
 **Frontend (GitHub Pages):**
-
 ```bash
-# Build PWA for production
 npm run build
-
-# Deployment happens automatically via GitHub Actions on push to main
-# Or deploy manually:
-npm run deploy
+# Deployment via GitHub Actions on push to main
 ```
 
 **Backend (Google Cloud Run):**
+See [Deployment Guide](#deployment) for complete GCP setup instructions.
 
-The embedding service is deployed at: `https://embedding-api-617806532906.us-central1.run.app`
-
-To deploy your own instance, see the [Deployment](#deployment) section below for Google Cloud Platform setup instructions.
+---
 
 ## Architecture
 
-### System Overview
+<details>
+<summary><strong>System Overview</strong></summary>
 
 ```mermaid
 graph TB
@@ -92,7 +130,14 @@ graph TB
 
     subgraph GCP["Google Cloud Platform"]
         CloudRun["Cloud Run<br/>(Embedding API)"]
+        LinkPreview["Cloud Run<br/>(Link Preview)"]
         GCS["Cloud Storage<br/>(Vector Index)"]
+    end
+
+    subgraph SOLID["SOLID Infrastructure"]
+        SolidServer["JavaScriptSolidServer"]
+        Pods["Personal Data Pods"]
+        WebID["WebID Profiles"]
     end
 
     subgraph Frontend["SvelteKit PWA"]
@@ -109,16 +154,25 @@ graph TB
     Static <-->|WebSocket| Relay
     Relay <-->|SQL| DB
     Static -->|HTTPS API| CloudRun
+    Static -->|HTTPS API| LinkPreview
     CloudRun -->|Vector Index| GCS
     IDB -.->|Sync| GCS
+
+    Static <-->|SOLID Protocol| SolidServer
+    SolidServer -->|Manages| Pods
+    Pods -->|Identity| WebID
 
     style Internet fill:#064e3b,color:#fff
     style Docker fill:#2496ed,color:#fff
     style GCP fill:#4285f4,color:#fff
+    style SOLID fill:#7c3aed,color:#fff
     style Frontend fill:#1e3a8a,color:#fff
 ```
 
-### Deployment Architecture
+</details>
+
+<details>
+<summary><strong>Deployment Architecture</strong></summary>
 
 ```mermaid
 graph LR
@@ -131,6 +185,7 @@ graph LR
         GHP -->|Loads| PWA["SvelteKit PWA"]
         PWA -->|WebSocket| Relay["Docker Relay<br/>(Internal Network)"]
         PWA -->|HTTPS| CloudRun["Cloud Run API<br/>embedding-api-*.run.app"]
+        PWA -->|HTTPS| LinkAPI["Link Preview API"]
         CloudRun -->|Store| GCS["Google Cloud Storage"]
         Relay -->|sql.js| SQLite["SQLite (WASM)"]
     end
@@ -146,7 +201,10 @@ graph LR
     style CI/CD fill:#6b21a8,color:#fff
 ```
 
-### Free Tier Compatibility
+</details>
+
+<details>
+<summary><strong>Free Tier Cost Analysis</strong></summary>
 
 ```mermaid
 graph TB
@@ -170,11 +228,24 @@ graph TB
     style Costs fill:#064e3b,color:#fff
 ```
 
+| Resource | Free Tier Limit | Typical Usage (100k msgs) | Utilization |
+|----------|-----------------|---------------------------|-------------|
+| **Cloud Run** | 2M requests/month | ~10k/month | 0.5% |
+| **Cloud Storage** | 5 GB | ~20 MB | 0.4% |
+| **GCS Reads** | 50k ops/month | ~10k/month | 20% |
+| **GCS Egress** | 1 GB/month | ~500 MB | 50% |
+| **Firestore** | 50k reads/day | ~1k/day | 2% |
+
+</details>
+
+---
+
 ## Semantic Vector Search
 
-Nostr-BBS includes AI-powered semantic search that understands meaning, not just keywords. Search for "schedule tomorrow's meeting" and find messages about "planning the session for Friday" - the system understands context and intent.
+AI-powered search that understands meaning, not just keywords. Search for "schedule tomorrow's meeting" and find messages about "planning the session for Friday."
 
-### Architecture Overview
+<details>
+<summary><strong>Search Architecture</strong></summary>
 
 ```mermaid
 graph TB
@@ -210,18 +281,10 @@ graph TB
     style PWA fill:#1e40af,color:#fff
 ```
 
-### Key Features
+</details>
 
-| Feature | Implementation | Benefit |
-|---------|----------------|---------|
-| **Semantic Understanding** | sentence-transformers/all-MiniLM-L6-v2 | Find by meaning, not just keywords |
-| **HNSW Index** | O(log n) approximate nearest neighbors | Sub-millisecond search on 100k+ vectors |
-| **Int8 Quantization** | 75% storage reduction | 100k messages = ~15MB index |
-| **WiFi-Only Sync** | Network Information API | Respects mobile data caps |
-| **Offline Search** | IndexedDB + hnswlib-wasm | Works without connectivity |
-| **Nightly Updates** | GitHub Actions cron | Always fresh index |
-
-### Data Flow
+<details>
+<summary><strong>Data Flow Sequence</strong></summary>
 
 ```mermaid
 sequenceDiagram
@@ -261,81 +324,24 @@ sequenceDiagram
     Relay-->>PWA: 19. Return decrypted content
 ```
 
+</details>
+
 ### Technical Specifications
 
-```yaml
-Embedding Model:
-  name: sentence-transformers/all-MiniLM-L6-v2
-  dimensions: 384
-  performance: ~30 sec per 1,000 messages
-  quantization: int8 (75% size reduction)
+| Component | Implementation | Benefit |
+|-----------|----------------|---------|
+| **Embedding Model** | all-MiniLM-L6-v2 (384d) | Semantic understanding |
+| **HNSW Index** | O(log n) ANN search | Sub-millisecond on 100k+ vectors |
+| **Int8 Quantization** | 75% storage reduction | 100k messages = ~15MB |
+| **WiFi-Only Sync** | Network Information API | Respects mobile data |
+| **Offline Search** | IndexedDB + hnswlib-wasm | No connectivity required |
 
-HNSW Index:
-  library: hnswlib (Python) + hnswlib-wasm (Browser)
-  space: cosine similarity
-  ef_construction: 200
-  M: 16
-  ef_search: 50
+---
 
-Storage:
-  platform: Google Cloud Storage
-  bucket: Nostr-BBS-nostr-embeddings
-  structure:
-    - latest/manifest.json
-    - latest/index.bin
-    - latest/index_mapping.json
-  versioning: Incremental (v1, v2, ...)
+## Nostr Protocol Implementation
 
-Client Sync:
-  trigger: WiFi or unmetered connection
-  storage: IndexedDB (embeddings table)
-  lazy_load: true (background, non-blocking)
-```
-
-### Free Tier Budget
-
-| Resource | Limit | Usage (100k msgs) | Headroom |
-|----------|-------|-------------------|----------|
-| **Cloud Run** | 2M requests/month | ~10k/month | 99.5% free |
-| **Cloud Storage** | 5 GB storage | ~20 MB | 99.6% free |
-| **GCS Reads** | 50k Class B ops/month | ~10k/month | 80% free |
-| **GCS Egress** | 1 GB/month (free tier) | ~500 MB | 50% free |
-| **Firestore** | 50k reads/day | ~1k/day | 98% free |
-
-### Usage
-
-```typescript
-import { SemanticSearch } from '$lib/semantic';
-
-// In your Svelte component
-<SemanticSearch
-  onSelect={(noteId) => navigateToMessage(noteId)}
-  placeholder="Search by meaning..."
-/>
-```
-
-```typescript
-// Programmatic API
-import { searchSimilar, syncEmbeddings, isSearchAvailable } from '$lib/semantic';
-
-// Sync index (automatic on WiFi)
-await syncEmbeddings();
-
-// Search for similar messages
-const results = await searchSimilar('meeting tomorrow', 10, 0.5);
-// Returns: [{ noteId: 'abc123', score: 0.89, distance: 0.11 }, ...]
-```
-
-### Privacy Considerations
-
-- **No Content Storage**: Only embeddings stored, not message text
-- **Encrypted Messages Excluded**: NIP-17/59 DMs not indexed (v1)
-- **Local Processing**: Search runs entirely in browser via WASM
-- **User Control**: Manual sync button, no automatic uploads
-
-## Nostr Implementation
-
-### Supported NIPs
+<details>
+<summary><strong>NIP Dependency Graph</strong></summary>
 
 ```mermaid
 graph TB
@@ -354,9 +360,11 @@ graph TB
         NIP25["NIP-25<br/>Reactions"]
     end
 
-    subgraph Features["Advanced Features"]
+    subgraph Advanced["Advanced Features"]
         NIP52["NIP-52<br/>Calendar Events"]
         NIP09["NIP-09<br/>Deletion"]
+        NIP16["NIP-16<br/>Ephemeral Events"]
+        NIP98["NIP-98<br/>HTTP Auth"]
     end
 
     NIP01 --> NIP28
@@ -366,47 +374,93 @@ graph TB
     NIP59 --> NIP17
     NIP01 --> NIP25
     NIP01 --> NIP09
+    NIP01 --> NIP16
+    NIP42 --> NIP98
 
     style Core fill:#1e40af,color:#fff
     style Messaging fill:#7c2d12,color:#fff
-    style Features fill:#064e3b,color:#fff
+    style Advanced fill:#064e3b,color:#fff
 ```
 
-### NIP Implementation Table
+</details>
+
+### Supported NIPs
 
 | NIP | Name | Status | Description |
 |-----|------|--------|-------------|
-| [NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md) | Basic Protocol | ✅ Complete | Core event format and relay communication |
-| [NIP-02](https://github.com/nostr-protocol/nips/blob/master/02.md) | Contact List | ✅ Complete | Following list management |
-| [NIP-09](https://github.com/nostr-protocol/nips/blob/master/09.md) | Event Deletion | ✅ Complete | Message deletion support |
-| [NIP-11](https://github.com/nostr-protocol/nips/blob/master/11.md) | Relay Information | ✅ Complete | Relay metadata document |
-| [NIP-17](https://github.com/nostr-protocol/nips/blob/master/17.md) | Private DMs | ✅ Complete | Sealed rumors for private messaging |
-| [NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md) | Reactions | ✅ Complete | Message reactions (emoji) |
-| [NIP-28](https://github.com/nostr-protocol/nips/blob/master/28.md) | Public Chat | ✅ Complete | Group channels with moderation |
-| [NIP-42](https://github.com/nostr-protocol/nips/blob/master/42.md) | Authentication | ✅ Complete | Relay authentication challenges |
-| [NIP-44](https://github.com/nostr-protocol/nips/blob/master/44.md) | Versioned Encryption | ✅ Complete | Modern encryption for DMs |
-| [NIP-52](https://github.com/nostr-protocol/nips/blob/master/52.md) | Calendar Events | ✅ Complete | Event scheduling with RSVP |
-| [NIP-59](https://github.com/nostr-protocol/nips/blob/master/59.md) | Gift Wrap | ✅ Complete | Metadata protection layer |
+| [NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md) | Basic Protocol | ✅ | Core event format and relay communication |
+| [NIP-02](https://github.com/nostr-protocol/nips/blob/master/02.md) | Contact List | ✅ | Following list management |
+| [NIP-09](https://github.com/nostr-protocol/nips/blob/master/09.md) | Event Deletion | ✅ | Message deletion support |
+| [NIP-11](https://github.com/nostr-protocol/nips/blob/master/11.md) | Relay Information | ✅ | Relay metadata document |
+| [NIP-16](https://github.com/nostr-protocol/nips/blob/master/16.md) | Ephemeral Events | ✅ | Temporary events (not persisted) |
+| [NIP-17](https://github.com/nostr-protocol/nips/blob/master/17.md) | Private DMs | ✅ | Sealed rumors for private messaging |
+| [NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md) | Reactions | ✅ | Message reactions (emoji) |
+| [NIP-28](https://github.com/nostr-protocol/nips/blob/master/28.md) | Public Chat | ✅ | Group channels with moderation |
+| [NIP-42](https://github.com/nostr-protocol/nips/blob/master/42.md) | Authentication | ✅ | Relay authentication challenges |
+| [NIP-44](https://github.com/nostr-protocol/nips/blob/master/44.md) | Versioned Encryption | ✅ | Modern encryption for DMs |
+| [NIP-52](https://github.com/nostr-protocol/nips/blob/master/52.md) | Calendar Events | ✅ | Event scheduling with RSVP |
+| [NIP-59](https://github.com/nostr-protocol/nips/blob/master/59.md) | Gift Wrap | ✅ | Metadata protection layer |
+| [NIP-98](https://github.com/nostr-protocol/nips/blob/master/98.md) | HTTP Auth | ✅ | HTTP request authentication |
 
-### Event Kinds
+---
 
-| Kind | NIP | Purpose | Documentation |
-|------|-----|---------|---------------|
-| 0 | 01 | User Profile | Metadata (name, avatar, bio) |
-| 1 | 01 | Text Note | Channel messages |
-| 4 | 04 | Encrypted DM | Legacy DMs (read-only) |
-| 5 | 09 | Deletion | Delete own messages |
-| 7 | 25 | Reaction | Emoji reactions |
-| 40 | 28 | Channel Creation | Create channel |
-| 41 | 28 | Channel Metadata | Update channel |
-| 42 | 28 | Channel Message | Post to channel |
-| 1059 | 59 | Gift Wrap | Wrapped DMs |
-| 31923 | 52 | Calendar Event | Date-based events |
-| 31925 | 52 | Calendar RSVP | Event responses |
-| 9022 | Custom | Section Access | Cohort-based channel access control |
-| 9023 | Custom | Calendar-Channel Link | Event-chatroom integration |
+## SOLID/WebID Integration
 
-### Cohort-Based Access Control
+Nostr BBS integrates with the SOLID ecosystem for true data sovereignty. Users can store personal data in their own pods while authenticating via Nostr keypairs.
+
+<details>
+<summary><strong>SOLID Architecture</strong></summary>
+
+```mermaid
+graph TB
+    subgraph Identity["Decentralized Identity"]
+        NostrKeys["Nostr Keypair<br/>(BIP-39)"]
+        DID["DID:nostr<br/>Identifier"]
+        WebID["WebID Profile"]
+    end
+
+    subgraph Storage["Personal Data Pods"]
+        SolidServer["JavaScriptSolidServer"]
+        Pod["User Pod"]
+        ACL["Access Control<br/>(WAC)"]
+    end
+
+    subgraph App["Nostr BBS"]
+        Auth["Authentication"]
+        Client["SOLID Client"]
+        Store["Local Cache"]
+    end
+
+    NostrKeys -->|Derives| DID
+    DID -->|Links to| WebID
+    WebID -->|Stored in| Pod
+
+    Auth -->|NIP-98| SolidServer
+    SolidServer -->|Manages| Pod
+    Pod -->|Protected by| ACL
+    Client <-->|SOLID Protocol| Pod
+    Client -->|Caches| Store
+
+    style Identity fill:#7c3aed,color:#fff
+    style Storage fill:#059669,color:#fff
+    style App fill:#1e40af,color:#fff
+```
+
+</details>
+
+### Key Capabilities
+
+- **Personal Data Pods** — Store messages, preferences, and media in your own pod
+- **DID-Nostr Bridge** — Link decentralized identifiers to Nostr public keys
+- **WebID Authentication** — Use Nostr signatures for SOLID authentication
+- **Interoperability** — Access data from any SOLID-compatible application
+
+---
+
+## Cohort-Based Access Control
+
+<details>
+<summary><strong>Access Control Flow</strong></summary>
 
 ```mermaid
 graph TB
@@ -419,12 +473,12 @@ graph TB
     subgraph Cohorts["User Cohorts"]
         Admin2["admin<br/>Full system access"]
         Business["business<br/>Business community"]
-        MoomaaTribe["members<br/>Premium members"]
+        Members["members<br/>Premium members"]
         Public["public<br/>Read-only access"]
     end
 
     subgraph Access["Channel Access (Kind 9022)"]
-        Channel1["meditation-circle<br/>cohorts: [admin, members]"]
+        Channel1["community-rooms<br/>cohorts: [admin, members]"]
         Channel2["business-network<br/>cohorts: [admin, business]"]
         Channel3["announcements<br/>cohorts: [public]"]
     end
@@ -439,13 +493,13 @@ graph TB
     Whitelist -->|Assigns| CohortAssign
     CohortAssign --> Admin2
     CohortAssign --> Business
-    CohortAssign --> MoomaaTribe
+    CohortAssign --> Members
     CohortAssign --> Public
 
     Admin2 -->|Full Access| Channel1
     Admin2 -->|Full Access| Channel2
     Admin2 -->|Full Access| Channel3
-    MoomaaTribe -->|Access| Channel1
+    Members -->|Access| Channel1
     Business -->|Access| Channel2
     Public -->|Read Only| Channel3
 
@@ -459,100 +513,14 @@ graph TB
     style Auth fill:#1e40af,color:#fff
 ```
 
-### Calendar Events with Channel Integration (NIP-52)
+</details>
 
-```mermaid
-sequenceDiagram
-    participant Admin
-    participant App as PWA
-    participant Relay as Nostr Relay
-    participant Members as Channel Members
-
-    Note over Admin,Members: Create Calendar Event with Channel Link
-
-    Admin->>App: 1. Create Calendar Event
-    App->>App: 2. Build Kind 31923 Event
-    Note over App: Tags: d (identifier)<br/>title, start, end, location<br/>p (cohorts allowed)
-
-    Admin->>App: 3. Link to Channel (optional)
-    App->>App: 4. Create Kind 9023 Event
-    Note over App: Links calendar event<br/>to chatroom channel
-
-    App->>Relay: 5. Publish Kind 31923 + 9023
-    Relay->>Relay: 6. Verify admin signature
-    Relay->>Members: 7. Broadcast to cohort members
-
-    Note over Admin,Members: Member RSVP Flow
-
-    Members->>App: 8. View Event Details
-    App->>Relay: 9. Fetch linked channel
-    Relay-->>App: 10. Return channel info
-
-    Members->>App: 11. Click "RSVP - Going"
-    App->>App: 12. Build Kind 31925 Event
-    Note over App: Tags: a (event ref)<br/>status (accepted/declined)
-    App->>Relay: 13. Publish RSVP
-
-    Relay->>Admin: 14. Notify organizer
-    Members->>App: 15. Join event chatroom
-    App->>Relay: 16. Subscribe to channel
-
-    Note over App,Relay: Event chatroom inherits<br/>calendar event cohort access
-```
-
-### Admin Workflow
-
-```mermaid
-graph LR
-    subgraph AdminPanel["Admin Panel"]
-        Login["Login with Mnemonic<br/>(BIP-39)"]
-        Dashboard["Admin Dashboard"]
-    end
-
-    subgraph Management["User Management"]
-        Pending["Pending Requests"]
-        Approve["Approve Users"]
-        AssignCohort["Assign Cohorts"]
-        Revoke["Revoke Access"]
-    end
-
-    subgraph Content["Content Management"]
-        CreateChannel["Create Channels"]
-        SetAccess["Set Channel Access"]
-        CreateEvent["Create Calendar Events"]
-        LinkEvent["Link Events to Channels"]
-        Moderate["Moderate Messages"]
-    end
-
-    subgraph Monitoring["Monitoring"]
-        ViewStats["Channel Statistics"]
-        ActiveUsers["Active Users"]
-        RSVPList["Event RSVPs"]
-    end
-
-    Login -->|NIP-06 Key Derivation| Dashboard
-    Dashboard --> Management
-    Dashboard --> Content
-    Dashboard --> Monitoring
-
-    Pending -->|Review| Approve
-    Approve -->|Select| AssignCohort
-    AssignCohort -->|Kind 9022| SetAccess
-
-    CreateChannel -->|Kind 40| SetAccess
-    SetAccess -->|Cohort Tags| CreateEvent
-    CreateEvent -->|Kind 31923| LinkEvent
-    LinkEvent -->|Kind 9023| Moderate
-
-    style AdminPanel fill:#b91c1c,color:#fff
-    style Management fill:#1e40af,color:#fff
-    style Content fill:#065f46,color:#fff
-    style Monitoring fill:#6b21a8,color:#fff
-```
+---
 
 ## User Flows
 
-### Complete User Journey
+<details>
+<summary><strong>Complete User Journey</strong></summary>
 
 ```mermaid
 graph TB
@@ -572,7 +540,6 @@ graph TB
     Join --> Chat[Send Messages]
     Chat --> React[React to Messages]
     Chat --> Search[Search Messages]
-    Chat --> Bookmark[Bookmark Messages]
 
     DMs --> NewDM[New Conversation]
     NewDM --> SendDM[Send Encrypted DM]
@@ -584,16 +551,15 @@ graph TB
 
     Profile --> Settings[Edit Profile]
     Settings --> Export[Export Data]
-    Settings --> Mute[Manage Blocked Users]
 
     style Start fill:#065f46,color:#fff
     style Dashboard fill:#1e40af,color:#fff
-    style Channels fill:#7c2d12,color:#fff
-    style DMs fill:#6b21a8,color:#fff
-    style Events fill:#b45309,color:#fff
 ```
 
-### Authentication Flow
+</details>
+
+<details>
+<summary><strong>Authentication Flow</strong></summary>
 
 ```mermaid
 sequenceDiagram
@@ -622,43 +588,10 @@ sequenceDiagram
     Note over Store: Private key encrypted with PIN
 ```
 
-### Channel Messaging Flow
+</details>
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant App as PWA
-    participant Cache as IndexedDB
-    participant Relay as Docker Relay
-    participant DB as SQLite
-    participant Others as Other Users
-
-    User->>App: 1. Join Channel
-    App->>Relay: 2. Subscribe (Kind 40-42)
-    Relay->>DB: 3. Query Channel Events
-    DB->>Relay: 4. Return Matching Events
-    Relay->>App: 5. Stream Existing Messages
-    App->>Cache: 6. Cache Messages Locally
-    App->>User: 7. Display Channel
-
-    User->>App: 8. Type Message
-    App->>App: 9. Create Kind 42 Event
-    App->>App: 10. Sign with Private Key
-    App->>Relay: 11. Publish Event
-
-    Relay->>Relay: 12. Validate Signature
-    Relay->>DB: 13. Store Event
-    Relay->>Others: 14. Broadcast to Subscribers
-    Relay->>App: 15. Confirm Receipt
-
-    App->>Cache: 16. Update Local Cache
-    Others->>Others: 17. Display Message
-
-    Note over Cache: Offline support via IndexedDB
-    Note over Relay: NIP-42 auth + cohort check
-```
-
-### Gift-Wrapped DM Flow (NIP-17/59)
+<details>
+<summary><strong>Gift-Wrapped DM Flow (NIP-17/59)</strong></summary>
 
 ```mermaid
 sequenceDiagram
@@ -687,119 +620,51 @@ sequenceDiagram
     Bob->>App: 11. Display Message
 
     rect rgb(200, 50, 50, 0.1)
-        Note over Relay: Privacy guarantees:<br/>✅ Sender hidden (random key)<br/>✅ Time hidden (fuzzed)<br/>✅ Content encrypted<br/>❌ Recipient visible (p tag)
+        Note over Relay: Privacy guarantees:<br/>✅ Sender hidden<br/>✅ Time hidden<br/>✅ Content encrypted
     end
 ```
 
-### Offline Message Queue Flow
+</details>
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant App as PWA
-    participant SW as Service Worker
-    participant Queue as IndexedDB Queue
-    participant Relay as Docker Relay
-
-    Note over App: User goes offline
-
-    User->>App: 1. Send Message
-    App->>App: 2. Detect Offline
-    App->>Queue: 3. Queue Message
-    App->>User: 4. Show "Queued" Status
-
-    Note over User,Relay: Network restored
-
-    SW->>SW: 5. Detect Online
-    SW->>Queue: 6. Get Queued Messages
-    Queue->>SW: 7. Return Messages
-
-    loop For each queued message
-        SW->>Relay: 8. Publish Event
-        Relay->>SW: 9. Confirm Receipt
-        SW->>Queue: 10. Remove from Queue
-    end
-
-    SW->>App: 11. Sync Complete Notification
-    App->>User: 12. Update UI
-
-    Note over Queue: Background Sync API<br/>Auto-syncs when online
-```
+---
 
 ## Project Structure
 
 ```
-Nostr-BBS-nostr/
+nostr-BBS/
 ├── src/
 │   ├── lib/
-│   │   ├── components/      # Svelte components
-│   │   │   ├── auth/        # Login, signup, profile
-│   │   │   ├── chat/        # Channel list, messages
-│   │   │   ├── dm/          # Direct messages
-│   │   │   ├── events/      # Calendar, booking
-│   │   │   ├── admin/       # Admin panel
-│   │   │   ├── forum/       # Forum-style features
-│   │   │   └── ui/          # Reusable UI components
-│   │   ├── nostr/           # Nostr protocol implementation
-│   │   │   ├── keys.ts      # BIP-39 key generation
-│   │   │   ├── encryption.ts # NIP-44 encryption
-│   │   │   ├── dm.ts        # NIP-17/59 DM functions
-│   │   │   ├── channels.ts  # NIP-28 channels
-│   │   │   ├── reactions.ts # NIP-25 reactions
-│   │   │   ├── calendar.ts  # NIP-52 events
-│   │   │   └── relay.ts     # NDK relay manager
-│   │   ├── semantic/        # Semantic vector search
-│   │   │   ├── embeddings-sync.ts  # WiFi-only GCS sync
-│   │   │   ├── hnsw-search.ts      # WASM vector search
-│   │   │   ├── SemanticSearch.svelte # Search UI component
-│   │   │   └── index.ts            # Module exports
-│   │   ├── stores/          # Svelte stores
-│   │   │   ├── auth.ts      # Authentication state
-│   │   │   ├── channels.ts  # Channel subscriptions
-│   │   │   ├── messages.ts  # Message cache
-│   │   │   ├── dm.ts        # DM conversations
-│   │   │   ├── pwa.ts       # PWA state
-│   │   │   ├── bookmarks.ts # Bookmarked messages
-│   │   │   ├── drafts.ts    # Message drafts
-│   │   │   └── mute.ts      # Blocked users
-│   │   └── utils/           # Helper functions
-│   │       ├── storage.ts   # IndexedDB operations
-│   │       ├── crypto.ts    # Cryptographic utilities
-│   │       ├── search.ts    # Message search
-│   │       └── export.ts    # Data export
-│   ├── routes/              # SvelteKit routes
-│   │   ├── +page.svelte     # Landing page
-│   │   ├── chat/            # Chat interface
-│   │   ├── dm/              # Direct messages
-│   │   ├── events/          # Calendar events
-│   │   ├── admin/           # Admin dashboard
-│   │   └── settings/        # User settings
-│   └── service-worker.ts    # PWA service worker
-├── embedding-service/       # Google Cloud Run service
-│   ├── src/
-│   │   ├── main.py          # FastAPI application
-│   │   ├── embeddings.py    # Embedding generation
-│   │   ├── hnsw_index.py    # HNSW index builder
-│   │   ├── gcs_client.py    # Cloud Storage client
-│   │   └── firestore_client.py  # Firestore client
-│   ├── Dockerfile           # Container definition
-│   ├── requirements.txt     # Python dependencies
-│   ├── cloudbuild.yaml      # Cloud Build config
-│   └── .gcloudignore        # GCP ignore patterns
-├── .github/
-│   └── workflows/
-│       ├── deploy-pages.yml  # Frontend deployment to GitHub Pages
-│       └── deploy-backend.yml  # Backend deployment to Cloud Run
-├── static/                  # Static assets
-│   ├── manifest.json        # PWA manifest
-│   └── icon-*.png           # PWA icons
-├── tests/                   # Test suites
-│   ├── unit/                # Unit tests
-│   └── e2e/                 # E2E tests
-├── docs/                    # Documentation
-├── svelte.config.js         # SvelteKit config (adapter-static)
-└── package.json             # Node dependencies
+│   │   ├── components/         # Svelte components
+│   │   │   ├── auth/           # Login, signup, profile
+│   │   │   ├── chat/           # Channel list, messages
+│   │   │   ├── dm/             # Direct messages
+│   │   │   ├── calendar/       # Calendar, events, RSVP
+│   │   │   ├── admin/          # Admin panel
+│   │   │   └── ui/             # Reusable UI components
+│   │   ├── nostr/              # Nostr protocol implementation
+│   │   ├── solid/              # SOLID/WebID integration
+│   │   │   ├── client.ts       # SOLID client
+│   │   │   ├── pods.ts         # Pod management
+│   │   │   ├── storage.ts      # Storage operations
+│   │   │   └── types.ts        # Type definitions
+│   │   ├── semantic/           # Vector search
+│   │   ├── stores/             # Svelte stores
+│   │   └── utils/              # Helper functions
+│   ├── routes/                 # SvelteKit routes
+│   └── service-worker.ts       # PWA service worker
+├── services/
+│   ├── embedding-api/          # Cloud Run embedding service
+│   ├── link-preview-api/       # Link preview microservice
+│   └── nostr-relay/            # Nostr relay with NIP extensions
+├── JavaScriptSolidServer/      # SOLID server submodule
+├── config/
+│   └── sections.yaml           # BBS configuration
+├── .github/workflows/          # CI/CD pipelines
+├── docs/                       # Documentation
+└── tests/                      # Test suites
 ```
+
+---
 
 ## Configuration
 
@@ -811,491 +676,228 @@ VITE_RELAY_URL=wss://your-nostr-relay.com
 VITE_ADMIN_PUBKEY=<hex-pubkey>              # Admin public key (64-char hex)
 VITE_NDK_DEBUG=false                         # Enable NDK debug logging
 
-# Semantic Search (Cloud Storage public URL)
-VITE_GCS_EMBEDDINGS_URL=https://storage.googleapis.com/Nostr-BBS-nostr-embeddings
+# Semantic Search
+VITE_GCS_EMBEDDINGS_URL=https://storage.googleapis.com/nostr-bbs-embeddings
 
-# Cloud Run API
-VITE_EMBEDDING_API_URL=https://embedding-api-617806532906.us-central1.run.app
+# Cloud Run APIs
+VITE_EMBEDDING_API_URL=https://embedding-api-*.run.app
+VITE_LINK_PREVIEW_API_URL=https://link-preview-api-*.run.app
 
-# GCP Configuration (for deployment)
+# SOLID Configuration
+VITE_SOLID_SERVER_URL=https://your-solid-server.com
+
+# GCP Configuration (deployment)
 GCP_PROJECT_ID=<your-project-id>
 GCP_REGION=us-central1
-GCS_BUCKET_NAME=Nostr-BBS-nostr-embeddings
 ```
 
-### GitHub Configuration (for CI/CD)
-
-**Repository Variables** (Settings → Secrets and variables → Actions → Variables):
-
-| Variable | Description |
-|----------|-------------|
-| `ADMIN_PUBKEY` | Admin public key (64-char hex format) |
-
-**Repository Secrets** (Settings → Secrets and variables → Actions → Secrets):
+### GitHub Actions Secrets
 
 | Secret | Description |
 |--------|-------------|
 | `GCP_PROJECT_ID` | Google Cloud project ID |
-| `GCP_SA_KEY` | Service account JSON key (for Cloud Build) |
+| `GCP_SA_KEY` | Service account JSON key |
 | `GCS_BUCKET_NAME` | Cloud Storage bucket name |
 
-The deploy workflow uses `${{ vars.ADMIN_PUBKEY }}` to inject the admin key at build time.
+| Variable | Description |
+|----------|-------------|
+| `ADMIN_PUBKEY` | Admin public key (64-char hex) |
 
-### Cloud Run API Configuration
-
-The embedding service runs on Google Cloud Run. Key configuration:
-
-- **API URL:** `https://embedding-api-617806532906.us-central1.run.app`
-- **Region:** `us-central1`
-- **Concurrency:** 80 requests per instance
-- **Memory:** 2 GB
-- **CPU:** 2 vCPU
-- **Auto-scaling:** 0 to 10 instances
-
-### PWA Configuration
-
-PWA settings in `static/manifest.json`:
-
-```json
-{
-  "name": "Nostr-BBS",
-  "short_name": "Nostr-BBS",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#1a1a1a",
-  "theme_color": "#3b82f6",
-  "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
-}
-```
-
-## Google Cloud Platform Free Tier
-
-This application is designed to run entirely on GCP's free tier:
-
-### Free Tier Limits
-
-**Cloud Run:**
-- 2 million requests per month
-- 360,000 GB-seconds of memory
-- 180,000 vCPU-seconds of compute
-- Scale to zero (no charges when idle)
-
-**Cloud Storage:**
-- 5 GB storage
-- 5,000 Class A operations (writes) per month
-- 50,000 Class B operations (reads) per month
-- 1 GB network egress per month
-
-**Firestore:**
-- 1 GiB storage
-- 50,000 reads per day
-- 20,000 writes per day
-- 20,000 deletes per day
-
-**Expected Usage (100k messages):**
-- Cloud Run: ~10k requests/month (0.5% of limit)
-- Storage: ~20 MB (0.4% of limit)
-- Reads: ~1k/day (2% of daily limit)
-- Egress: ~500 MB/month (50% of monthly limit)
-
-**Cost Estimate:** $0/month on free tier for typical usage
+---
 
 ## Deployment
 
 ### GitHub Pages (Frontend)
 
-The frontend is automatically deployed via GitHub Actions on every push to `main`:
+Automatic deployment via GitHub Actions on push to `main`:
 
-1. **Setup GitHub Pages:**
-   - Go to repository Settings > Pages
-   - Source: GitHub Actions
-   - Branch: main
-
-2. **GitHub Actions workflow** (`.github/workflows/deploy.yml`):
-   ```yaml
-   name: Deploy to GitHub Pages
-   on:
-     push:
-       branches: [main]
-   jobs:
-     deploy:
-       runs-on: ubuntu-latest
-       steps:
-         - uses: actions/checkout@v4
-         - uses: actions/setup-node@v4
-           with:
-             node-version: 18
-         - run: npm ci
-         - run: npm run build
-         - uses: actions/upload-pages-artifact@v2
-           with:
-             path: build
-         - uses: actions/deploy-pages@v2
-   ```
-
-3. **Manual deployment:**
-   ```bash
-   npm run build
-   npm run deploy
-   ```
+1. Configure repository Settings → Pages → Source: GitHub Actions
+2. Push to main branch triggers build and deploy
 
 ### Google Cloud Run (Backend)
 
-The embedding API is deployed at `https://embedding-api-617806532906.us-central1.run.app`.
-
-For custom deployments:
-
-**Prerequisites:**
-- Google Cloud SDK installed
-- GCP project created
-- Billing enabled (free tier available)
-
-**Deployment Steps:**
-
 ```bash
-# Authenticate with GCP
+# Authenticate
 gcloud auth login
 gcloud config set project YOUR_PROJECT_ID
 
-# Create Cloud Storage bucket (first time only)
-gsutil mb -l us-central1 gs://Nostr-BBS-nostr-embeddings
-gsutil iam ch allUsers:objectViewer gs://Nostr-BBS-nostr-embeddings
-
-# Build and deploy to Cloud Run
-cd embedding-service/
-gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/embedding-api
+# Deploy embedding API
+cd services/embedding-api/
 gcloud run deploy embedding-api \
-  --image gcr.io/YOUR_PROJECT_ID/embedding-api \
-  --platform managed \
+  --source . \
   --region us-central1 \
-  --allow-unauthenticated \
-  --memory 2Gi \
-  --cpu 2 \
-  --concurrency 80 \
-  --min-instances 0 \
-  --max-instances 10
+  --allow-unauthenticated
+
+# Deploy link preview API
+cd ../link-preview-api/
+gcloud run deploy link-preview-api \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated
 ```
 
-**Environment Configuration:**
+See [docs/deployment/DEPLOYMENT.md](docs/deployment/DEPLOYMENT.md) for complete guide.
 
-```bash
-# Set environment variables for Cloud Run
-gcloud run services update embedding-api \
-  --region us-central1 \
-  --set-env-vars GCS_BUCKET_NAME=Nostr-BBS-nostr-embeddings
-```
-
-See also:
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - Full deployment guide
-- [Google Cloud Run Documentation](https://cloud.google.com/run/docs)
-
-### API Endpoints
-
-The Cloud Run service provides the following REST endpoints:
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check endpoint |
-| `/api/embeddings/generate` | POST | Generate embeddings for messages |
-| `/api/embeddings/index` | POST | Build and upload HNSW index |
-| `/api/embeddings/manifest` | GET | Get current index version |
-| `/api/embeddings/sync` | POST | Trigger full sync pipeline |
+---
 
 ## Testing
 
 ```bash
-# Run all tests
-npm test
-
-# Run unit tests
-npm test -- unit
-
-# Run E2E tests with Playwright
-npm run test:e2e
-
-# Test specific file
-npm test src/lib/nostr/dm.test.ts
-
-# Run tests in watch mode
-npm test -- --watch
+npm test              # Run all tests
+npm run test:e2e      # E2E tests with Playwright
+npm run check         # Type checking
+npm run lint          # Linting
 ```
 
-## Security Considerations
+---
+
+## Security
 
 ### Key Management
 - Private keys stored encrypted in localStorage
-- BIP-39 mnemonic backup for key recovery
-- Keys never transmitted to server or relay
+- BIP-39 mnemonic backup for recovery
+- Keys never transmitted to servers
 - Optional PIN/passphrase protection
 
 ### Message Privacy
 - NIP-44 encryption for all DMs
-- Gift wrap hides sender identity from relay
+- Gift wrap hides sender from relay
 - Timestamp fuzzing prevents timing analysis
-- Content encrypted end-to-end
+- End-to-end encryption
 
-### Relay Security
-- NIP-42 authentication required for writes
-- Cohort-based whitelist (business, members, admin)
-- Event validation and signature verification
-- NIP-09 deletion support
+### Infrastructure Security
+- HTTPS everywhere (Google-managed certs)
+- NIP-42 authentication required
+- NIP-98 HTTP authentication for APIs
+- Zero-trust serverless architecture
 
-### Network Security
-- HTTPS for GitHub Pages (automatic)
-- HTTPS for Cloud Run (Google-managed certificates)
-- Content Security Policy headers
-- CORS configuration
-- Google Cloud Armor protection (available)
-
-### Serverless Security Benefits
-- No server to compromise
-- Cloud Run provides isolated container execution
-- Automatic HTTPS with Google-managed certificates
-- Google Cloud's DDoS protection
-- IAM-based access control
-- Zero-trust architecture
-
-## GitHub Labels
-
-Our project uses a comprehensive labeling system for issue and PR management:
-
-### Priority Labels
-- `priority: critical` - Security issues, data loss bugs, service outages
-- `priority: high` - Major features, significant bugs affecting many users
-- `priority: medium` - Regular features, moderate bugs
-- `priority: low` - Nice-to-have features, minor improvements
-
-### Type Labels
-- `type: bug` - Something isn't working
-- `type: feature` - New feature request
-- `type: enhancement` - Improvement to existing feature
-- `type: documentation` - Documentation improvements
-- `type: refactor` - Code refactoring
-- `type: test` - Test-related changes
-- `type: security` - Security-related issues
-
-### Area Labels
-- `area: api` - Cloud Run API, backend services
-- `area: pwa` - Progressive Web App, service worker
-- `area: ui/ux` - User interface and experience
-- `area: encryption` - NIP-44, NIP-17/59 encryption
-- `area: channels` - NIP-28 public channels
-- `area: dm` - Direct messaging (NIP-17/59)
-- `area: calendar` - NIP-52 calendar events
-- `area: admin` - Admin panel and moderation
-- `area: deployment` - GitHub Pages, Google Cloud Platform
-- `area: embeddings` - Semantic search, vector embeddings
-
-### Status Labels
-- `status: needs triage` - Needs review and classification
-- `status: blocked` - Blocked by dependencies
-- `status: in progress` - Currently being worked on
-- `status: needs review` - Awaiting code review
-- `status: ready to merge` - Approved and ready
-
-### Special Labels
-- `good first issue` - Good for newcomers
-- `help wanted` - Extra attention needed
-- `breaking change` - Breaking API changes
-- `dependencies` - Dependency updates
-
-## API Reference
-
-### Relay Manager
-
-```typescript
-import { connectRelay, publishEvent, subscribe } from '$lib/nostr';
-
-// Connect to relay (local development)
-await connectRelay('ws://localhost:8080', privateKey);
-
-// Publish event
-const event = new NDKEvent();
-event.kind = 1;
-event.content = 'Hello Nostr!';
-await publishEvent(event);
-
-// Subscribe to events
-const sub = subscribe({ kinds: [1], limit: 10 });
-sub.on('event', (event) => console.log(event));
-```
-
-### Direct Messages
-
-```typescript
-import { sendDM, receiveDM, createDMFilter } from '$lib/nostr/dm';
-
-// Send encrypted DM
-await sendDM('Hello!', recipientPubkey, senderPrivkey, relay);
-
-// Receive and decrypt
-const dm = receiveDM(giftWrapEvent, myPrivkey);
-console.log(dm.content, dm.senderPubkey);
-
-// Subscribe to DMs
-const filter = createDMFilter(myPubkey);
-```
-
-### Channel Operations
-
-```typescript
-import { createChannel, sendChannelMessage } from '$lib/nostr/channels';
-
-// Create channel (admin only)
-await createChannel({
-  name: 'General',
-  about: 'General discussion',
-  picture: 'https://example.com/icon.png'
-});
-
-// Send message
-await sendChannelMessage(channelId, 'Hello channel!');
-```
+---
 
 ## Documentation
 
 ### Deployment & Operations
-- [Deployment Guide](docs/deployment/DEPLOYMENT.md) - Serverless deployment and configuration
-- [GCP Architecture](docs/deployment/gcp-architecture.md) - Google Cloud Platform setup
-- [GCP Deployment](docs/deployment/GCP_DEPLOYMENT.md) - Cloud Run deployment guide
-- [GitHub Workflows](docs/deployment/github-workflows.md) - CI/CD pipeline configuration
+- [Deployment Guide](docs/deployment/DEPLOYMENT.md)
+- [GCP Architecture](docs/deployment/gcp-architecture.md)
+- [GitHub Workflows](docs/deployment/github-workflows.md)
 
 ### Security
-- [Security Audit](docs/security/SECURITY_AUDIT.md) - Security analysis and recommendations
-- [Audit Report](docs/security/SECURITY_AUDIT_REPORT.md) - Detailed security findings
-- [Admin Key Rotation](docs/security/ADMIN_KEY_ROTATION.md) - Key management procedures
-- [SQL Injection Fix](docs/security/security-fix-sql-injection.md) - Database security hardening
+- [Security Audit](docs/security/SECURITY_AUDIT.md)
+- [Admin Key Rotation](docs/security/ADMIN_KEY_ROTATION.md)
 
-### Feature Documentation
-- [Direct Messages](docs/features/dm-implementation.md) - NIP-17/59 encrypted messaging
-- [Message Threading](docs/features/threading-implementation.md) - Threaded conversations
-- [Reactions](docs/features/nip-25-reactions-implementation.md) - NIP-25 emoji reactions
-- [Search](docs/features/search-implementation.md) - Semantic & keyword search
-- [Mute & Block](docs/features/mute-implementation-summary.md) - User blocking system
-- [Pinned Messages](docs/features/pinned-messages-implementation.md) - Pin important messages
-- [Link Previews](docs/features/link-preview-implementation.md) - URL preview generation
-- [Drafts](docs/features/drafts-implementation.md) - Message draft persistence
-- [Export](docs/features/export-implementation.md) - Data export functionality
-- [PWA Implementation](docs/features/pwa-implementation.md) - Offline support and installation
-- [Notifications](docs/features/notification-system-phase1.md) - Push notification system
-- [Accessibility](docs/features/accessibility-improvements.md) - WCAG compliance
+### Features
+- [Direct Messages](docs/features/dm-implementation.md)
+- [Semantic Search](docs/architecture/06-semantic-search-spec.md)
+- [PWA Implementation](docs/features/pwa-implementation.md)
+- [SOLID Integration](docs/solid/README.md)
 
-### Architecture (SPARC Methodology)
-- [Specification](docs/architecture/01-specification.md) - Requirements and specs
-- [System Architecture](docs/architecture/02-architecture.md) - System design details
-- [Pseudocode](docs/architecture/03-pseudocode.md) - Algorithm design
-- [Refinement](docs/architecture/04-refinement.md) - Implementation refinement
-- [Completion](docs/architecture/05-completion.md) - Integration and deployment
-- [Semantic Search Spec](docs/architecture/06-semantic-search-spec.md) - Vector search requirements
-- [Search Architecture](docs/architecture/07-semantic-search-architecture.md) - Embedding pipeline design
-- [Search Algorithms](docs/architecture/08-semantic-search-pseudocode.md) - HNSW implementation
-- [Risk Assessment](docs/architecture/09-semantic-search-risks.md) - Integration risks
+### Architecture (SPARC)
+- [Specification](docs/architecture/01-specification.md)
+- [Architecture](docs/architecture/02-architecture.md)
+- [Pseudocode](docs/architecture/03-pseudocode.md)
+
+---
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ### Development Guidelines
 
-- Follow the existing code style
+- Follow existing code style
 - Write tests for new features
 - Update documentation as needed
 - Use semantic commit messages
-- Ensure all tests pass before submitting PR
+
+---
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
-## Third Party Dependencies
+---
 
-This project incorporates the following third-party open-source components:
+## Third Party Dependencies
 
 ### JavaScriptSolidServer
 
-- **Repository**: https://github.com/JavaScriptSolidServer/JavaScriptSolidServer
-- **License**: AGPL-3.0-only
-- **Usage**: Provides Solid pod storage functionality with Nostr DID authentication integration
-- **Description**: Community Solid Server implementation enabling decentralized data storage. Used for personal data pod functionality allowing users to store and control their own data while authenticating via Nostr keypairs. See [docs/solid/README.md](docs/solid/README.md) for integration details.
+- **Repository**: https://github.com/CommunitySolidServer/CommunitySolidServer
+- **License**: MIT
+- **Usage**: SOLID pod server providing personal data storage with WebID authentication
+- **Integration**: Enables users to store and control their own data while authenticating via Nostr keypairs
 
-## Credits and Attribution
+---
 
-This project builds upon exceptional open-source work from the Nostr ecosystem and broader web development community.
+## Credits & Acknowledgements
 
-### Core Nostr Technologies
+### Major Contributors
 
-- **[Nostr Protocol](https://github.com/nostr-protocol/nostr)** - The foundation protocol enabling decentralized, censorship-resistant communication
-- **[NDK (Nostr Dev Kit)](https://github.com/nostr-dev-kit/ndk)** - Comprehensive Nostr development toolkit by Pablo Fernandez ([@pablof7z](https://github.com/pablof7z))
-- **[nostr-tools](https://github.com/nbd-wtf/nostr-tools)** - Essential Nostr utilities by fiatjaf
+<table>
+<tr>
+<td align="center" width="50%">
+<a href="https://github.com/CommunitySolidServer/CommunitySolidServer">
+<strong>Community Solid Server</strong>
+</a>
+<br/>
+<sub>SOLID/WebID infrastructure enabling decentralized personal data storage</sub>
+</td>
+<td align="center" width="50%">
+<a href="https://github.com/Agentic-Alliance">
+<strong>Agentic Alliance</strong>
+</a>
+<br/>
+<sub>Major contributors to architecture, NIP implementations, and SOLID integration</sub>
+</td>
+</tr>
+</table>
 
-### Frontend Framework & UI
+### Core Technologies
 
-- **[SvelteKit](https://kit.svelte.dev)** - Application framework by the Svelte team
-- **[DaisyUI](https://daisyui.com)** - Beautiful component library by Pouya Saadeghi
-- **[TailwindCSS](https://tailwindcss.com)** - Utility-first CSS framework
-- **[Dexie.js](https://dexie.org)** - IndexedDB wrapper by David Fahlander
+#### Nostr Ecosystem
+- **[Nostr Protocol](https://github.com/nostr-protocol/nostr)** — Decentralized communication foundation
+- **[NDK (Nostr Dev Kit)](https://github.com/nostr-dev-kit/ndk)** — Development toolkit by [@pablof7z](https://github.com/pablof7z)
+- **[nostr-tools](https://github.com/nbd-wtf/nostr-tools)** — Essential utilities by fiatjaf
 
-### Machine Learning & Search
+#### Frontend & UI
+- **[SvelteKit](https://kit.svelte.dev)** — Application framework
+- **[DaisyUI](https://daisyui.com)** — Component library
+- **[TailwindCSS](https://tailwindcss.com)** — Utility-first CSS
 
-- **[Transformers.js](https://huggingface.co/docs/transformers.js)** - Machine learning models by Hugging Face
-- **[sentence-transformers](https://www.sbert.net/)** - Multilingual sentence embeddings
-- **[all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)** - Compact 384d embedding model
-- **[hnswlib](https://github.com/nmslib/hnswlib)** - Fast approximate nearest neighbour search
-- **[hnswlib-wasm](https://github.com/yoshoku/hnswlib-wasm)** - WASM-based vector similarity search
+#### Machine Learning & Search
+- **[sentence-transformers](https://www.sbert.net/)** — Multilingual embeddings
+- **[hnswlib](https://github.com/nmslib/hnswlib)** — Fast approximate nearest neighbor search
+- **[hnswlib-wasm](https://github.com/yoshoku/hnswlib-wasm)** — Browser-based vector search
 
-### Infrastructure & Cloud Services
+#### Infrastructure
+- **[Google Cloud Run](https://cloud.google.com/run)** — Serverless containers
+- **[GitHub Pages](https://pages.github.com)** — Static hosting
+- **[GitHub Actions](https://github.com/features/actions)** — CI/CD automation
 
-- **[Google Cloud Run](https://cloud.google.com/run)** - Serverless container platform
-- **[Google Cloud Storage](https://cloud.google.com/storage)** - Object storage for vector embeddings
-- **[Google Firestore](https://cloud.google.com/firestore)** - NoSQL metadata database
-- **[Google Cloud Build](https://cloud.google.com/build)** - CI/CD pipeline
-- **[GitHub Pages](https://pages.github.com)** - Static site hosting
-- **[GitHub Actions](https://github.com/features/actions)** - Frontend deployment automation
+### Development Tools
+- **[Claude Code](https://claude.ai/claude-code)** — AI-assisted development by Anthropic
+- **[Claude Flow](https://github.com/ruvnet/claude-flow)** — Swarm coordination for parallel development
 
-### Development & Quality Engineering Tools
+### Project Team
+- **John O'Hare** ([@jjohare](https://github.com/jjohare)) — Project Lead
+- **Claude Opus 4.5 / Claude Sonnet 4** — AI Development Assistance
 
-- **[Agentic QE Fleet](https://github.com/proffesor-for-testing/agentic-qe)** - AI-powered quality engineering agents (31 QE agents, 53 QE skills)
-- **[Claude Code](https://claude.ai/claude-code)** - AI-assisted development by Anthropic
-- **[Claude Flow](https://github.com/ruvnet/claude-flow)** - Swarm coordination for parallel development
-- **[ruv-swarm](https://github.com/ruv/ruv-swarm)** - Multi-agent orchestration
-
-### NIPs Implemented
-
-Special thanks to the Nostr community for the NIP specifications:
-- **[NIP-01](https://github.com/nostr-protocol/nips/blob/master/01.md)** - Basic Protocol
-- **[NIP-02](https://github.com/nostr-protocol/nips/blob/master/02.md)** - Contact List
-- **[NIP-09](https://github.com/nostr-protocol/nips/blob/master/09.md)** - Event Deletion
-- **[NIP-11](https://github.com/nostr-protocol/nips/blob/master/11.md)** - Relay Information
-- **[NIP-17](https://github.com/nostr-protocol/nips/blob/master/17.md)** - Private DMs
-- **[NIP-25](https://github.com/nostr-protocol/nips/blob/master/25.md)** - Reactions
-- **[NIP-28](https://github.com/nostr-protocol/nips/blob/master/28.md)** - Public Chat
-- **[NIP-42](https://github.com/nostr-protocol/nips/blob/master/42.md)** - Authentication
-- **[NIP-44](https://github.com/nostr-protocol/nips/blob/master/44.md)** - Versioned Encryption
-- **[NIP-52](https://github.com/nostr-protocol/nips/blob/master/52.md)** - Calendar Events
-- **[NIP-59](https://github.com/nostr-protocol/nips/blob/master/59.md)** - Gift Wrap
-
-### Contributors
-
-- John O'Hare ([@jjohare](https://github.com/jjohare)) - Project lead
-- Claude Opus 4.5 / Claude Sonnet 4.5 - AI development assistance
+---
 
 ## Support
 
-- Documentation: See [docs/](docs/) directory
-- Issues: [GitHub Issues](https://github.com/jjohare/Nostr-BBS/issues)
-- Discussions: [GitHub Discussions](https://github.com/jjohare/Nostr-BBS/discussions)
+- **Documentation**: [docs/](docs/)
+- **Issues**: [GitHub Issues](https://github.com/jjohare/Nostr-BBS/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/jjohare/Nostr-BBS/discussions)
+
+---
+
+<div align="center">
+
+**Built with open protocols for a decentralized future**
+
+[Nostr Protocol](https://nostr.com) • [SOLID Project](https://solidproject.org) • [SvelteKit](https://kit.svelte.dev)
+
+</div>
