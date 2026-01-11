@@ -1,7 +1,7 @@
 ---
 title: GitHub Actions Workflows - GCP Deployment
 description: CI/CD workflow configuration for automated GCP Cloud Run deployments using GitHub Actions
-last_updated: 2025-12-23
+last_updated: 2025-12-26
 category: reference
 tags: [deployment, development, testing]
 ---
